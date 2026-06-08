@@ -1,0 +1,24 @@
+{
+  "name": "hkrndmdm",
+  "private": true,
+  "version": "0.0.0",
+  "scripts": {
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "lint": "turbo lint",
+    "test": "turbo test",
+    "preview": "turbo preview --filter=@hkrndmdm/web",
+    "web:dev": "turbo dev --filter=@hkrndmdm/web",
+    "web:build": "turbo build --filter=@hkrndmdm/web",
+    "web:lint": "turbo lint --filter=@hkrndmdm/web",
+    "web:preview": "turbo preview --filter=@hkrndmdm/web",
+    "api:dev": "turbo start:dev --filter=@hkrndmdm/api",
+    "api:build": "turbo build --filter=@hkrndmdm/api",
+    "api:lint": "turbo lint --filter=@hkrndmdm/api",
+    "api:test": "turbo test --filter=@hkrndmdm/api"
+  },
+  "packageManager": "pnpm@10.33.0",
+  "devDependencies": {
+    "turbo": "^2.9.16"
+  }
+}

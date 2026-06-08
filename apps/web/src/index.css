@@ -1,0 +1,114 @@
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&display=swap');
+@import "tailwindcss";
+
+/* Hankook KR Web Font */
+@font-face {
+  font-family: "Hankook KR";
+  src: url("/fonts/HankookKRTTFLight.woff2") format("woff2");
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Hankook KR";
+  src: url("/fonts/HankookKRTTFRegular.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Hankook KR";
+  src: url("/fonts/HankookKRTTFMedium.woff2") format("woff2");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Hankook KR";
+  src: url("/fonts/HankookKRTTFSemibold.woff2") format("woff2");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Hankook KR";
+  src: url("/fonts/HankookKRTTFBold.woff2") format("woff2");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@theme {
+  --color-primary: #001e40;
+  --color-primary-container: #003366;
+  --color-on-primary-container: #799dd6;
+  --color-secondary: #545f72;
+  --color-accent: #ff7022;
+  --color-accent-hover: #e05300;
+  --color-surface-base: #f7f9fb;
+  --color-surface-card: #ffffff;
+  --color-border-subtle: #eceef0;
+  --color-error: #ba1a1a;
+  --color-error-container: #ffdad6;
+
+  --font-hankook: "Hankook KR", sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
+
+  --radius-xs: 2px;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+}
+
+/* Custom baseline styling */
+html {
+  font-size: 18
+}
+
+body {
+  font-family: var(--font-hankook);
+  background-color: var(--color-surface-base);
+  color: #191c1e;
+  overflow-x: hidden;
+}
+
+/* Elegant scrollbars for data-dense layouts */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f4f6;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Animation utilities */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.25s ease-out forwards;
+}
