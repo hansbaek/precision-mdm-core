@@ -84,6 +84,16 @@ export class TemplateService {
     return s !== '' && s !== '0' && s.toUpperCase() !== 'N';
   }
 
+  private marketFlags(r: RawRow): Record<(typeof MARKET_COLS)[number], string> {
+    return MARKET_COLS.reduce(
+      (acc, col) => ({
+        ...acc,
+        [col]: this.cell(r, col),
+      }),
+      {} as Record<(typeof MARKET_COLS)[number], string>,
+    );
+  }
+
   private mapRow(r: RawRow) {
     return {
       id: Number(r['TMPLT_ID'] ?? r['tmplt_id'] ?? 0),
@@ -91,8 +101,29 @@ export class TemplateService {
       testItemName: this.cell(r, 'TEST_ITEM_NAME'),
       testMethod: this.cell(r, 'TEST_MTH_NAME'),
       testCondition: this.cell(r, 'TEST_CDN_NAME'),
+      endurSvrty: this.cell(r, 'ENDUR_SVRTY'),
+      certiTtm: this.cell(r, 'CERTI_TTM'),
       certiType: this.cell(r, 'CERTI_TYPE'),
+      tempTire: this.cell(r, 'TEMP_TIRE'),
+      snowMark: this.cell(r, 'SNOW_MARK'),
+      frt: this.cell(r, 'FRT'),
+      utqg: this.cell(r, 'UTQG'),
+      por: this.cell(r, 'POR'),
+      radialBias: this.cell(r, 'RADIAL_BIAS'),
+      rimInch: this.cell(r, 'RIM_INCH'),
+      grvDepth: this.cell(r, 'GRV_DEPTH'),
+      ss: this.cell(r, 'SS'),
+      li: this.cell(r, 'LI'),
+      plyRating: this.cell(r, 'PLY_RATING'),
+      tlIndicator: this.cell(r, 'TL_INDICATOR'),
+      tbrPosition: this.cell(r, 'TBR_POSITION'),
+      tbrGrv3: this.cell(r, 'TBR_GRV_3'),
+      tbrSegment: this.cell(r, 'TBR_SEGMENT'),
+      tbrItemCntPerBarcode: this.cell(r, 'TBR_ITEM_CNT_PER_BARCODE'),
+      newSizeYn: this.cell(r, 'NEW_SIZE_YN'),
+      sizeSmpl: this.cell(r, 'SIZE_SMPL'),
       markets: MARKET_COLS.filter((c) => this.isMarketOn(r, c)),
+      marketFlags: this.marketFlags(r),
       createdAt: this.cell(r, 'CREATED_AT'),
       createdBy: this.cell(r, 'CREATED_BY'),
     };
@@ -165,6 +196,27 @@ export class TemplateService {
       TEST_ITEM_NAME: dto.testItemName,
       TEST_MTH_NAME: dto.testMethod,
       TEST_CDN_NAME: dto.testCondition,
+      ENDUR_SVRTY: dto.endurSvrty,
+      CERTI_TTM: dto.certiTtm,
+      CERTI_TYPE: dto.certiType,
+      TEMP_TIRE: dto.tempTire,
+      SNOW_MARK: dto.snowMark,
+      FRT: dto.frt,
+      UTQG: dto.utqg,
+      POR: dto.por,
+      RADIAL_BIAS: dto.radialBias,
+      RIM_INCH: dto.rimInch,
+      GRV_DEPTH: dto.grvDepth,
+      SS: dto.ss,
+      LI: dto.li,
+      PLY_RATING: dto.plyRating,
+      TL_INDICATOR: dto.tlIndicator,
+      TBR_POSITION: dto.tbrPosition,
+      TBR_GRV_3: dto.tbrGrv3,
+      TBR_SEGMENT: dto.tbrSegment,
+      TBR_ITEM_CNT_PER_BARCODE: dto.tbrItemCntPerBarcode,
+      NEW_SIZE_YN: dto.newSizeYn,
+      SIZE_SMPL: dto.sizeSmpl,
     };
 
     for (const [col, val] of Object.entries(textMap)) {

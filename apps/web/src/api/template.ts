@@ -35,6 +35,27 @@ export type StdTestItemUpdate = Partial<{
   testItemName: string;
   testMethod: string;
   testCondition: string;
+  endurSvrty: string;
+  certiTtm: string;
+  certiType: string;
+  tempTire: string;
+  snowMark: string;
+  frt: string;
+  utqg: string;
+  por: string;
+  radialBias: string;
+  rimInch: string;
+  grvDepth: string;
+  ss: string;
+  li: string;
+  plyRating: string;
+  tlIndicator: string;
+  tbrPosition: string;
+  tbrGrv3: string;
+  tbrSegment: string;
+  tbrItemCntPerBarcode: string;
+  newSizeYn: string;
+  sizeSmpl: string;
   markets: string;
 }>;
 
