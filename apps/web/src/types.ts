@@ -13,55 +13,54 @@ export interface UserProfile {
   role: string;
 }
 
-export interface TestItem {
-  id: string;
-  category: string;
-  nameKr: string;
-  nameEn: string;
-  specification: string;
-  unit: string;
-  mandatory: 'REQUIRED' | 'OPTIONAL';
-  lastUpdated: string;
-  status: 'Active' | 'Pending' | 'Inactive';
-  productLines: string[];
-  description: string;
+export interface FilterOptions {
+  productLine: string;
+  searchQuery: string;
+  markets: string;
+}
+
+export interface StdCode {
+  codeGrpId: string;
+  codeCd: string;
+  codeNm: string;
+  codeDesc: string;
+  sortOrder: number;
+  useYn: string;
+}
+
+export interface StdTestItem {
+  id: number;
+  productLine: string;
+  testItemName: string;
+  testMethod: string;
+  testCondition: string;
+  certiType: string;
+  markets: string[];
+  createdAt: string;
   createdBy: string;
 }
 
-export interface AuditLog {
-  id: string;
-  itemId: string;
-  itemName: string;
-  action: 'CREATE' | 'UPDATE' | 'DELETE' | 'STATUS_CHANGE' | 'BULK_IMPORT';
-  details: string;
-  timestamp: string;
-  user: string;
+export interface StdStats {
+  total: number;
+  distinctProductLines: number;
+  distinctTestMethods: number;
+  distinctTestItems: number;
+  avgMarketsPerItem: number;
+  noMarketCount: number;
+  byProductLine: { name: string; count: number }[];
+  byTestMethod: { name: string; count: number }[];
+  byTestItem: { name: string; count: number }[];
+  marketCoverage: { code: string; count: number }[];
+  recent: StdTestItem[];
 }
 
-export interface FilterOptions {
-  productLine: string;
-  category: string;
-  searchQuery: string;
-  status: string;
-  startDate: string;
-  endDate: string;
-}
-
-export const PRODUCT_LINES = [
-  { value: 'PCR', label: 'Passenger Car (PCR) - 승용차' },
-  { value: 'LTR', label: 'Light Truck (LTR) - 경트럭' },
-  { value: 'TBR', label: 'Truck & Bus (TBR) - 트럭/버스' },
-  { value: 'EV', label: 'Electric Vehicle (EV) - 전기차' },
-  { value: 'RAC', label: 'Racing & Motorsport - 레이싱' },
-];
-
-export const CATEGORIES = [
-  'Material Strength',
-  'Durability',
-  'Noise & Vibration',
-  'Aerodynamics',
-  'Tread Pattern Strength',
-  'Thermal Performance',
-  'High Speed Uniformity',
-  'Wet Grip Grip Performance',
-];
+export const ALL_MARKETS = [
+  'F1', 'F2', 'F3',
+  'A0', 'A1', 'A2', 'A3', 'A4', 'A5', 'A6', 'A7', 'A8', 'A9',
+  'N1', 'N2', 'N3',
+  'E1', 'E2', 'E3', 'E4', 'E5', 'E6',
+  'K1',
+  'M1', 'M2', 'M3', 'M4', 'M5', 'M6',
+  'NA',
+  'L1', 'L2', 'L3', 'L4', 'L5', 'L6', 'L7', 'L8',
+] as const;

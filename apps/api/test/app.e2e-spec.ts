@@ -20,7 +20,7 @@ describe('AppController (e2e)', () => {
     return request(app.getHttpServer())
       .get('/')
       .expect(200)
-      .expect('Hello World!');
+      .expect('엔지니어링 마스터데이터베이스 관리!!');
   });
 
   afterEach(async () => {

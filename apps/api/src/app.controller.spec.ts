@@ -15,8 +15,10 @@ describe('AppController', () => {
   });
 
   describe('root', () => {
-    it('should return "Hello World!"', () => {
-      expect(appController.getHello()).toBe('Hello World!');
+    it('should return the service welcome message', () => {
+      expect(appController.getHello()).toBe(
+        '엔지니어링 마스터데이터베이스 관리!!',
+      );
     });
   });
 });

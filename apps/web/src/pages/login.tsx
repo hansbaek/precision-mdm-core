@@ -84,7 +84,7 @@ function Login() {
     <div className="w-full min-h-screen flex flex-col items-center justify-center bg-gray-200">
       <div className="relative z-10 w-80 max-w-md bg-white dark:bg-slate-900 shadow-sm rounded-md overflow-hidden border border-slate-200 dark:border-slate-800 pt-4">
         <div className="mt-4 flex flex-col items-center text-nowrap">
-          <h1 className="block text-xl text-[#707786] antialiased font-sans">
+          <h1 className="block text-xl text-[#707786] antialiased font-hankook">
             <span className="dark:text-white">Welcome to </span>
             <span className="text-orange-500 font-medium font-">
               DII Boiler Plate

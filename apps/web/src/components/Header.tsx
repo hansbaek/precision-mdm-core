@@ -49,7 +49,7 @@ export default function Header({ activeTab, setActiveTab, globalSearch, setGloba
                 key={tab.id}
                 id={`header-tab-${tab.id}`}
                 onClick={() => setActiveTab(tab.id)}
-                className={`h-full border-b-[3px] font-noto tracking-wider text-xs uppercase px-1.5 transition-all outline-none cursor-pointer flex items-center pt-0.5 ${isActive
+                className={`h-full border-b-[3px] tracking-wider text-xs uppercase px-1.5 transition-all outline-none cursor-pointer flex items-center pt-0.5 ${isActive
                   ? 'border-accent text-primary font-extrabold'
                   : 'border-transparent text-secondary hover:text-primary'
                   }`}
@@ -94,13 +94,13 @@ export default function Header({ activeTab, setActiveTab, globalSearch, setGloba
                 id="notification-dropdown"
                 className="absolute right-0 mt-3 w-80 bg-white rounded-lg border border-border-subtle shadow-xl py-3 text-xs text-slate-700 animate-fade-in z-50 overflow-hidden"
               >
-                <div className="px-4 py-2 border-b border-border-subtle font-extrabold text-slate-900 flex justify-between items-center font-noto tracking-tight">
+                <div className="px-4 py-2 border-b border-border-subtle font-extrabold text-slate-900 flex justify-between items-center tracking-tight">
                   <span>알림 (System Notifications)</span>
                   <span className="text-[10px] bg-surface-base text-accent px-2 py-0.5 rounded-sm font-mono font-bold">3 NEW</span>
                 </div>
                 <div className="divide-y divide-slate-50 max-h-60 overflow-y-auto">
                   {recentAlerts.map(alert => (
-                    <div key={alert.id} className="p-3.5 hover:bg-surface-base font-noto">
+                    <div key={alert.id} className="p-3.5 hover:bg-surface-base">
                       <p className="text-slate-700 leading-normal font-medium">{alert.text}</p>
                       <span className="text-[10px] text-slate-400 font-mono mt-1 w-full block">{alert.time}</span>
                     </div>
@@ -120,7 +120,7 @@ export default function Header({ activeTab, setActiveTab, globalSearch, setGloba
         </div>
 
         {/* User Badge Profile */}
-        <div className="flex items-center gap-3.5 border-l border-border-subtle pl-4 h-8 select-none font-noto">
+        <div className="flex items-center gap-3.5 border-l border-border-subtle pl-4 h-8 select-none">
           <div className="h-8 w-8 rounded-sm bg-primary text-white font-extrabold font-hanken text-xs flex items-center justify-center border border-primary-container shadow-sm">
             HB
           </div>

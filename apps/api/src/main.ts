@@ -30,4 +30,4 @@ async function bootstrap() {
   const port = configService.get<number>('API_PORT', 4000);
   await app.listen(port);
 }
-bootstrap();
+void bootstrap();

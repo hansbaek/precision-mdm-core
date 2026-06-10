@@ -3,12 +3,11 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { AuditLogsModule } from './audit-logs/audit-logs.module';
 import { getOracleTypeOrmOptions } from './config/database.config';
 import { validateEnvironment } from './config/env.validation';
-import { DatabaseModule } from './database/database.module';
 import { HealthModule } from './health/health.module';
-import { TestItemsModule } from './test-items/test-items.module';
+import { StdCodesModule } from './std-codes/std-codes.module';
+import { TemplateModule } from './template/template.module';
 
 @Module({
   imports: [
@@ -22,9 +21,8 @@ import { TestItemsModule } from './test-items/test-items.module';
       useFactory: getOracleTypeOrmOptions,
     }),
     HealthModule,
-    DatabaseModule,
-    TestItemsModule,
-    AuditLogsModule,
+    StdCodesModule,
+    TemplateModule,
   ],
   controllers: [AppController],
   providers: [AppService],
