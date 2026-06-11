@@ -105,12 +105,11 @@ function buildDetailGroups(item: StdTestItem): DetailGroup[] {
     },
     {
       title: '2. 시험 항목 정의',
-      description: '시험 템플릿의 핵심 항목, 방법, 조건, 내구 가혹도입니다.',
+      description: '시험 템플릿의 핵심 항목, 방법, 조건입니다.',
       fields: [
         { column: 'TEST_ITEM_NAME', label: '시험 항목명', value: item.testItemName, wide: true },
         { column: 'TEST_MTH_NAME', label: '시험 방법명', value: item.testMethod },
         { column: 'TEST_CDN_NAME', label: '시험 조건명', value: item.testCondition },
-        { column: 'ENDUR_SVRTY', label: '내구 가혹도', value: item.endurSvrty, mono: true },
       ],
     },
     {
@@ -247,14 +246,31 @@ function MarketSection({ item }: { item: StdTestItem }) {
 
   return (
     <section className="bg-card border border-border rounded-xl shadow-xs overflow-hidden">
-      <div className="px-5 py-3 border-b border-border">
-        <h3 className="text-xs font-extrabold text-primary uppercase tracking-widest">
-          7. 시장 적용 정보
-        </h3>
-        <p className="text-2xs text-secondary mt-1">
-          F/A/N/E/K/M/NA/L 그룹별 38개 마켓 플래그 컬럼입니다. 적용 {item.markets.length}개 /
-          전체 38개
-        </p>
+      <div className="px-5 py-3 border-b border-border flex items-center justify-between gap-4 flex-wrap">
+        <div>
+          <h3 className="text-xs font-extrabold text-primary uppercase tracking-widest">
+            7. 시장 적용 정보
+          </h3>
+          <p className="text-2xs text-secondary mt-1">
+            F/A/N/E/K/M/NA/L 그룹별 38개 마켓 플래그 컬럼입니다. 적용 {item.markets.length}개 /
+            전체 38개
+          </p>
+        </div>
+        {/* 가혹도는 타겟 시장의 법규에서 도출되는 값 — 시장 섹션에 표시 */}
+        <div className="flex items-center gap-2 shrink-0">
+          <span className="text-2xs font-bold text-secondary uppercase tracking-wider">
+            ENDUR_SVRTY · 내구 가혹도
+          </span>
+          <span
+            className={`inline-flex items-center px-3 py-1.5 rounded-lg border text-sm font-bold font-mono ${
+              item.endurSvrty
+                ? 'bg-info-container text-info border-info/20'
+                : 'bg-muted/60 text-muted-foreground/60 border-border'
+            }`}
+          >
+            {item.endurSvrty || '–'}
+          </span>
+        </div>
       </div>
       <div className="p-5 grid grid-cols-1 lg:grid-cols-2 gap-4">
         {MARKET_GROUPS.map((group) => (

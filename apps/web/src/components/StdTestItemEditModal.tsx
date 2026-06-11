@@ -326,7 +326,6 @@ export default function StdTestItemEditModal({ isOpen, item, onClose, onSaved }:
             form={form}
             onChange={handleFieldChange}
             disabled={saving}
-            endurSvrtyOptions={optionsByColumn.ENDUR_SVRTY}
           />
 
           {/* Sections 3+ */}
@@ -341,7 +340,14 @@ export default function StdTestItemEditModal({ isOpen, item, onClose, onSaved }:
             />
           ))}
 
-          <MarketEditSection selectedMarkets={selectedMarkets} onToggle={toggleMarket} disabled={saving} />
+          <MarketEditSection
+            selectedMarkets={selectedMarkets}
+            onToggle={toggleMarket}
+            disabled={saving}
+            endurSvrty={form.endurSvrty}
+            onEndurSvrtyChange={(v) => handleFieldChange('endurSvrty', v)}
+            endurSvrtyOptions={optionsByColumn.ENDUR_SVRTY}
+          />
 
           <ReadonlyAudit item={item} />
         </div>
@@ -379,12 +385,10 @@ function TestItemDefinitionSection({
   form,
   onChange,
   disabled,
-  endurSvrtyOptions,
 }: {
   form: FormState;
   onChange: (key: keyof FormState, value: string) => void;
   disabled: boolean;
-  endurSvrtyOptions: string[];
 }) {
   const [group, setGroup] = useState('');
   const [groups, setGroups] = useState<string[]>([]);
@@ -561,19 +565,6 @@ function TestItemDefinitionSection({
           </ComboField>
         </div>
 
-        {/* 내구 가혹도 — DW_STD_CODE 'ENDUR_SVRTY' 콤보 */}
-        <ComboField column="ENDUR_SVRTY" label="내구 가혹도 (1~4)">
-          <SearchCombobox
-            id="edit-combo-endur-svrty"
-            value={form.endurSvrty}
-            onChange={(v) => onChange('endurSvrty', v)}
-            options={endurSvrtyOptions}
-            placeholder="가혹도 선택"
-            disabled={disabled}
-            allowClear
-            mono
-          />
-        </ComboField>
       </div>
     </section>
   );
@@ -714,21 +705,48 @@ function MarketEditSection({
   selectedMarkets,
   onToggle,
   disabled,
+  endurSvrty,
+  onEndurSvrtyChange,
+  endurSvrtyOptions,
 }: {
   selectedMarkets: Set<string>;
   onToggle: (code: string) => void;
   disabled: boolean;
+  endurSvrty: string;
+  onEndurSvrtyChange: (value: string) => void;
+  endurSvrtyOptions: string[];
 }) {
   return (
     <section className="bg-card border border-border rounded-xl shadow-xs overflow-hidden">
-      <div className="px-5 py-3 border-b border-border">
-        <h3 className="text-xs font-extrabold text-primary uppercase tracking-widest">
-          7. 시장 적용 정보
-        </h3>
-        <p className="text-2xs text-secondary mt-1">
-          38개 마켓 플래그 컬럼을 클릭하여 적용 여부를 토글합니다. 현재 {selectedMarkets.size}개
-          선택
-        </p>
+      <div className="px-5 py-3 border-b border-border flex items-end justify-between gap-4 flex-wrap">
+        <div>
+          <h3 className="text-xs font-extrabold text-primary uppercase tracking-widest">
+            7. 시장 적용 정보
+          </h3>
+          <p className="text-2xs text-secondary mt-1">
+            38개 마켓 플래그 컬럼을 클릭하여 적용 여부를 토글합니다. 현재 {selectedMarkets.size}개
+            선택
+          </p>
+        </div>
+        {/* 가혹도는 타겟 시장의 법규에서 도출되는 값 — 시장 섹션에 배치 */}
+        <div className="w-44 shrink-0">
+          <div className="flex items-center justify-between gap-2 mb-1.5">
+            <label className="text-2xs font-bold text-secondary uppercase tracking-wider">
+              ENDUR_SVRTY
+            </label>
+            <span className="text-2xs text-muted-foreground/70 truncate">내구 가혹도 (1~4)</span>
+          </div>
+          <SearchCombobox
+            id="edit-combo-endur-svrty"
+            value={endurSvrty}
+            onChange={onEndurSvrtyChange}
+            options={endurSvrtyOptions}
+            placeholder="가혹도 선택"
+            disabled={disabled}
+            allowClear
+            mono
+          />
+        </div>
       </div>
       <div className="p-5">
         <div className="flex flex-wrap gap-1.5">
