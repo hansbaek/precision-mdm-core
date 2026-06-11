@@ -5,6 +5,7 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { getOracleTypeOrmOptions } from './config/database.config';
 import { validateEnvironment } from './config/env.validation';
+import { EndurSvrtyModule } from './endur-svrty/endur-svrty.module';
 import { HealthModule } from './health/health.module';
 import { StdCodesModule } from './std-codes/std-codes.module';
 import { TemplateModule } from './template/template.module';
@@ -21,6 +22,7 @@ import { TestClassificationModule } from './test-classification/test-classificat
       inject: [ConfigService],
       useFactory: getOracleTypeOrmOptions,
     }),
+    EndurSvrtyModule,
     HealthModule,
     StdCodesModule,
     TemplateModule,

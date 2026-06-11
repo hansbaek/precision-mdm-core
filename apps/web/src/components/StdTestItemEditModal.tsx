@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Save } from 'lucide-react';
+import { AlertTriangle, Check, Save, Wand2 } from 'lucide-react';
 
 import FlagToggle from '@/components/FlagToggle';
 import MultiCombobox from '@/components/MultiCombobox';
@@ -20,6 +20,7 @@ import {
   getTestClassificationItems,
   getTestClassificationMethods,
 } from '../api/test-classification';
+import { suggestEndurSvrty, type SvrtySuggestResult } from '../api/endur-svrty';
 import { useStdCodes } from '../hooks/use-std-codes';
 import type { StdTestItem } from '../types';
 import { ALL_MARKETS } from '../types';
@@ -347,6 +348,9 @@ export default function StdTestItemEditModal({ isOpen, item, onClose, onSaved }:
             endurSvrty={form.endurSvrty}
             onEndurSvrtyChange={(v) => handleFieldChange('endurSvrty', v)}
             endurSvrtyOptions={optionsByColumn.ENDUR_SVRTY}
+            productLine={form.productLine}
+            testMethod={form.testMethod}
+            ss={form.ss}
           />
 
           <ReadonlyAudit item={item} />
@@ -708,6 +712,9 @@ function MarketEditSection({
   endurSvrty,
   onEndurSvrtyChange,
   endurSvrtyOptions,
+  productLine,
+  testMethod,
+  ss,
 }: {
   selectedMarkets: Set<string>;
   onToggle: (code: string) => void;
@@ -715,7 +722,51 @@ function MarketEditSection({
   endurSvrty: string;
   onEndurSvrtyChange: (value: string) => void;
   endurSvrtyOptions: string[];
+  productLine: string;
+  testMethod: string;
+  ss: string;
 }) {
+  const [suggestion, setSuggestion] = useState<SvrtySuggestResult | null>(null);
+  const [suggestLoading, setSuggestLoading] = useState(false);
+
+  const marketsStr = ALL_MARKETS.filter((m) => selectedMarkets.has(m)).join(',');
+
+  useEffect(() => {
+    let ignore = false;
+    const load = async () => {
+      if (!productLine || !marketsStr) {
+        setSuggestion(null);
+        return;
+      }
+      setSuggestLoading(true);
+      try {
+        const result = await suggestEndurSvrty({
+          productLine,
+          markets: marketsStr,
+          testMethod: testMethod || undefined,
+          ss: ss || undefined,
+        });
+        if (!ignore) setSuggestion(result);
+      } catch {
+        if (!ignore) setSuggestion(null);
+      } finally {
+        if (!ignore) setSuggestLoading(false);
+      }
+    };
+    // Debounce: market toggles come in bursts
+    const timer = setTimeout(() => void load(), 300);
+    return () => {
+      ignore = true;
+      clearTimeout(timer);
+    };
+  }, [productLine, marketsStr, testMethod, ss]);
+
+  const reasonText: Record<string, string> = {
+    UNSUPPORTED_METHOD: '지원되지 않는 시험 방법 — 고속내구(High Speed)/일반내구(Load Up)만 제안 가능',
+    NO_APPLICABLE_REGULATION: '선택한 시장에 적용 가능한 법규 순위가 없습니다',
+    NO_MARKETS: '시장을 선택하면 가혹도가 제안됩니다',
+  };
+
   return (
     <section className="bg-card border border-border rounded-xl shadow-xs overflow-hidden">
       <div className="px-5 py-3 border-b border-border flex items-end justify-between gap-4 flex-wrap">
@@ -747,6 +798,62 @@ function MarketEditSection({
             mono
           />
         </div>
+      </div>
+
+      {/* 가혹도 자동 제안 — 시장·방법·SS 변경 시 갱신, 적용은 항상 수동 */}
+      <div className="px-5 py-2.5 border-b border-border bg-muted/30 flex items-center gap-2.5 flex-wrap min-h-11">
+        {suggestLoading ? (
+          <span className="flex items-center gap-1.5 text-2xs font-bold text-muted-foreground">
+            <Spinner className="h-3 w-3" />
+            가혹도 제안 계산 중...
+          </span>
+        ) : suggestion?.suggested ? (
+          <>
+            <span className="inline-flex items-center gap-1.5 text-2xs font-bold bg-info-container text-info border border-info/20 rounded-md px-2 py-1">
+              <Wand2 className="h-3 w-3" />
+              제안: {suggestion.suggested} — {suggestion.basis?.testCdnName} (
+              {suggestion.basis?.regulationCode} · {suggestion.basis?.marketCode})
+              {suggestion.speedGradeAssumed && ' · 속도등급 R이하 가정'}
+            </span>
+            {endurSvrty === suggestion.suggested ? (
+              <span className="inline-flex items-center gap-1 text-2xs font-bold text-success">
+                <Check className="h-3.5 w-3.5" />
+                현재값 일치
+              </span>
+            ) : (
+              <Button
+                type="button"
+                variant="outline"
+                size="xs"
+                disabled={disabled}
+                onClick={() => onEndurSvrtyChange(suggestion.suggested!)}
+                className="text-2xs font-bold h-6"
+              >
+                제안 적용
+              </Button>
+            )}
+          </>
+        ) : suggestion?.reason ? (
+          <span className="text-2xs font-medium text-muted-foreground">
+            {reasonText[suggestion.reason] ?? suggestion.reason}
+          </span>
+        ) : (
+          <span className="text-2xs font-medium text-muted-foreground/70">
+            시장을 선택하면 법규 기반 가혹도가 제안됩니다
+          </span>
+        )}
+
+        {suggestion && suggestion.mandatory.length > 0 && (
+          <span className="inline-flex items-center gap-1.5 text-2xs font-bold bg-warning-container text-warning border border-warning/30 rounded-md px-2 py-1">
+            <AlertTriangle className="h-3 w-3" />
+            US 포함 — {suggestion.mandatory.map((m) => m.testCdnName).join('/')} 필수 시험
+          </span>
+        )}
+        {suggestion && suggestion.unmappedMarkets.length > 0 && (
+          <span className="text-2xs text-muted-foreground/70">
+            법규 매핑 없는 시장: {suggestion.unmappedMarkets.join(', ')} (제안에서 제외)
+          </span>
+        )}
       </div>
       <div className="p-5">
         <div className="flex flex-wrap gap-1.5">
