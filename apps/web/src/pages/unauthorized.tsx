@@ -9,7 +9,7 @@ export const UnauthorizedPage = () => {
         <h2 className="font-medium text-base mb-5">
           You are not authorized to view this page.
         </h2>
-        <Link className="hover:underline text-blue-600" to="/">
+        <Link className="hover:underline text-info" to="/">
           Go back home &rarr;
         </Link>
       </div>

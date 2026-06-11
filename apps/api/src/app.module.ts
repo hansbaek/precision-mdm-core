@@ -8,6 +8,7 @@ import { validateEnvironment } from './config/env.validation';
 import { HealthModule } from './health/health.module';
 import { StdCodesModule } from './std-codes/std-codes.module';
 import { TemplateModule } from './template/template.module';
+import { TestClassificationModule } from './test-classification/test-classification.module';
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { TemplateModule } from './template/template.module';
     HealthModule,
     StdCodesModule,
     TemplateModule,
+    TestClassificationModule,
   ],
   controllers: [AppController],
   providers: [AppService],

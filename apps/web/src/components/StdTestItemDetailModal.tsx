@@ -1,4 +1,13 @@
-import { X } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import type { MarketCode, StdTestItem } from '../types';
 
 type DetailField = {
@@ -35,31 +44,23 @@ interface Props {
 }
 
 export default function StdTestItemDetailModal({ isOpen, item, onClose, onEdit }: Props) {
-  if (!isOpen || !item) return null;
+  if (!item) return null;
 
   const groups = buildDetailGroups(item);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm animate-fade-in">
-      <div className="bg-white w-full max-w-6xl rounded-sm shadow-2xl border border-border-subtle flex flex-col max-h-[92vh]">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-border-subtle bg-primary/5">
-          <div>
-            <p className="text-[10px] text-secondary font-mono uppercase tracking-widest">
-              상세 보기 / Detail View · TEMPLATE_STD_TEST_ITEM
-            </p>
-            <h2 className="text-base font-extrabold text-primary font-hanken mt-0.5">
-              STD Test Item #{item.id} · {item.productLine || '–'} · {item.testItemName || '–'}
-            </h2>
-          </div>
-          <button
-            onClick={onClose}
-            className="p-1.5 hover:bg-slate-100 rounded-full text-slate-500 transition-colors"
-          >
-            <X className="h-5 w-5" />
-          </button>
-        </div>
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="max-w-6xl sm:max-w-6xl p-0 gap-0 max-h-[92vh] flex flex-col overflow-hidden">
+        <DialogHeader className="px-6 py-4 border-b border-border bg-primary/5 gap-0.5 shrink-0">
+          <DialogDescription className="text-2xs text-secondary font-mono uppercase tracking-widest">
+            상세 보기 / Detail View · TEMPLATE_STD_TEST_ITEM
+          </DialogDescription>
+          <DialogTitle className="text-base font-extrabold text-primary font-hanken">
+            STD Test Item #{item.id} · {item.productLine || '–'} · {item.testItemName || '–'}
+          </DialogTitle>
+        </DialogHeader>
 
-        <div className="overflow-y-auto p-6 space-y-5 flex-1 bg-[#f7f9fb]">
+        <div className="overflow-y-auto p-6 space-y-5 flex-1 bg-background">
           {groups.map((group) => (
             <DetailSection key={group.title} group={group} />
           ))}
@@ -67,30 +68,28 @@ export default function StdTestItemDetailModal({ isOpen, item, onClose, onEdit }
           <MarketSection item={item} />
         </div>
 
-        <div className="px-6 py-4 border-t border-border-subtle flex justify-between gap-2 bg-slate-50">
-          <p className="text-[10px] text-slate-400 font-mono self-center">
+        <DialogFooter className="px-6 py-4 mx-0 mb-0 border-t border-border sm:justify-between gap-2 bg-muted/50 shrink-0 rounded-b-xl">
+          <p className="text-2xs text-muted-foreground font-mono self-center">
             전체 66개 컬럼 기준 그룹 표시 · 읽기 전용: TMPLT_ID, CREATED_AT, CREATED_BY
           </p>
           <div className="flex justify-end gap-2">
-            <button
-              onClick={onClose}
-              className="px-4 py-2 text-xs font-bold text-slate-600 bg-white border border-border-subtle rounded-sm hover:bg-slate-50 transition-colors cursor-pointer"
-            >
+            <Button variant="outline" size="sm" onClick={onClose} className="text-xs font-bold">
               닫기
-            </button>
-            <button
+            </Button>
+            <Button
+              size="sm"
               onClick={() => {
                 onClose();
                 onEdit(item);
               }}
-              className="px-5 py-2 text-xs font-bold text-white bg-accent hover:bg-accent-hover rounded-sm transition-colors cursor-pointer"
+              className="text-xs font-bold bg-accent hover:bg-accent-hover text-white px-5"
             >
               수정 (Edit)
-            </button>
+            </Button>
           </div>
-        </div>
-      </div>
-    </div>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -176,12 +175,12 @@ function buildDetailGroups(item: StdTestItem): DetailGroup[] {
 
 function DetailSection({ group }: { group: DetailGroup }) {
   return (
-    <section className="bg-white border border-border-subtle rounded-sm shadow-xs overflow-hidden">
-      <div className="px-5 py-3 border-b border-border-subtle bg-white">
+    <section className="bg-card border border-border rounded-xl shadow-xs overflow-hidden">
+      <div className="px-5 py-3 border-b border-border">
         <h3 className="text-xs font-extrabold text-primary uppercase tracking-widest">
           {group.title}
         </h3>
-        <p className="text-[10px] text-secondary mt-1">{group.description}</p>
+        <p className="text-2xs text-secondary mt-1">{group.description}</p>
       </div>
       <div className="p-5 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
         {group.fields.map((field) => (
@@ -198,16 +197,16 @@ function Field({ field }: { field: DetailField }) {
   return (
     <div className={`space-y-1 min-w-0 ${field.wide ? 'md:col-span-2' : ''}`}>
       <div className="flex items-center justify-between gap-2">
-        <label className="text-[10px] font-bold text-secondary uppercase tracking-wider">
+        <label className="text-2xs font-bold text-secondary uppercase tracking-wider">
           {field.column}
         </label>
-        <span className="text-[9px] text-slate-400 truncate">{field.label}</span>
+        <span className="text-2xs text-muted-foreground/70 truncate">{field.label}</span>
       </div>
       {field.badge ? (
         <FlagBadge value={value} />
       ) : (
         <p
-          className={`text-sm font-semibold text-slate-800 break-words rounded-sm bg-slate-50 border border-slate-100 px-3 py-2 min-h-9 ${
+          className={`text-sm font-semibold text-foreground break-words rounded-lg bg-muted/60 border border-border px-3 py-2 min-h-9 ${
             field.mono ? 'font-mono' : ''
           }`}
         >
@@ -224,7 +223,7 @@ function FlagBadge({ value }: { value: string }) {
 
   if (value === '–') {
     return (
-      <span className="inline-flex items-center min-h-9 px-3 py-2 rounded-sm border border-slate-100 bg-slate-50 text-sm font-semibold text-slate-400">
+      <span className="inline-flex items-center min-h-9 px-3 py-2 rounded-lg border border-border bg-muted/60 text-sm font-semibold text-muted-foreground/60">
         –
       </span>
     );
@@ -232,10 +231,10 @@ function FlagBadge({ value }: { value: string }) {
 
   return (
     <span
-      className={`inline-flex items-center min-h-9 px-3 py-2 rounded-sm border text-sm font-bold font-mono ${
+      className={`inline-flex items-center min-h-9 px-3 py-2 rounded-lg border text-sm font-bold font-mono ${
         active
-          ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-          : 'bg-slate-50 text-slate-600 border-slate-100'
+          ? 'bg-success-container text-success border-success/20'
+          : 'bg-muted/60 text-muted-foreground border-border'
       }`}
     >
       {value}
@@ -247,24 +246,24 @@ function MarketSection({ item }: { item: StdTestItem }) {
   const activeSet = new Set(item.markets);
 
   return (
-    <section className="bg-white border border-border-subtle rounded-sm shadow-xs overflow-hidden">
-      <div className="px-5 py-3 border-b border-border-subtle bg-white">
+    <section className="bg-card border border-border rounded-xl shadow-xs overflow-hidden">
+      <div className="px-5 py-3 border-b border-border">
         <h3 className="text-xs font-extrabold text-primary uppercase tracking-widest">
           7. 시장 적용 정보
         </h3>
-        <p className="text-[10px] text-secondary mt-1">
+        <p className="text-2xs text-secondary mt-1">
           F/A/N/E/K/M/NA/L 그룹별 38개 마켓 플래그 컬럼입니다. 적용 {item.markets.length}개 /
           전체 38개
         </p>
       </div>
       <div className="p-5 grid grid-cols-1 lg:grid-cols-2 gap-4">
         {MARKET_GROUPS.map((group) => (
-          <div key={group.title} className="border border-border-subtle rounded-sm bg-slate-50 p-4">
+          <div key={group.title} className="border border-border rounded-lg bg-muted/40 p-4">
             <div className="flex items-center justify-between mb-3">
-              <h4 className="text-[11px] font-extrabold text-primary uppercase tracking-widest">
+              <h4 className="text-2xs font-extrabold text-primary uppercase tracking-widest">
                 {group.title}
               </h4>
-              <span className="text-[10px] font-mono font-bold text-secondary">
+              <span className="text-2xs font-mono font-bold text-secondary">
                 {group.codes.filter((code) => activeSet.has(code)).length}/{group.codes.length}
               </span>
             </div>
@@ -273,20 +272,17 @@ function MarketSection({ item }: { item: StdTestItem }) {
                 const rawValue = item.marketFlags?.[code] || '';
                 const on = activeSet.has(code);
                 return (
-                  <span
+                  <Badge
                     key={code}
                     title={`${code}: ${rawValue || 'NULL'}`}
-                    className={`inline-flex items-center gap-1 px-2 py-1 rounded-sm text-[11px] font-mono font-bold border ${
+                    className={`rounded-md text-2xs font-mono font-bold border h-auto py-1 ${
                       on
-                        ? 'bg-blue-600 text-white border-blue-600'
-                        : 'bg-white text-slate-300 border-slate-200'
+                        ? 'bg-info text-white border-info'
+                        : 'bg-card text-muted-foreground/40 border-border'
                     }`}
                   >
-                    <span>{code}</span>
-                    <span className={on ? 'text-blue-100' : 'text-slate-300'}>
-                      {rawValue || '–'}
-                    </span>
-                  </span>
+                    {code}
+                  </Badge>
                 );
               })}
             </div>

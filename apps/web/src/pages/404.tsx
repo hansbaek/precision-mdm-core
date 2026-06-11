@@ -9,7 +9,7 @@ export const NotFoundPage = () => {
         <h2 className="font-medium text-base mb-5">
           The page you're looking for does not exist or has moved.
         </h2>
-        <Link className="hover:underline text-blue-600" to="/">
+        <Link className="hover:underline text-info" to="/">
           Go back home &rarr;
         </Link>
       </div>

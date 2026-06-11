@@ -64,3 +64,58 @@ export const updateStdTestItem = (id: number, data: StdTestItemUpdate): Promise<
 
 export const getStdStats = (): Promise<StdStats> =>
   axiosInstance.get('/template/stats').then(res => res.data);
+
+// ── Excel Template Upload (sync) ──────────────────────────────────────────
+
+export type UploadErrorCode = 'INVALID_ID' | 'DUPLICATE_ID' | 'UNKNOWN_ID' | 'CELL_ERROR';
+
+export interface UploadRowError {
+  rowNumber: number;
+  code: UploadErrorCode;
+  message: string;
+}
+
+export interface UploadChange {
+  column: string;
+  before: string | null;
+  after: string | null;
+}
+
+export interface UploadSummary {
+  inserts: number;
+  updates: number;
+  deletes: number;
+  unchanged: number;
+}
+
+export interface UploadPreviewResult {
+  sheetName: string;
+  fileRowCount: number;
+  dbRowCount: number;
+  valid: boolean;
+  summary: UploadSummary;
+  inserts: { rowNumber: number; values: Record<string, string | null>; markets: string[] }[];
+  updates: { rowNumber: number; id: number; testItemName: string; changes: UploadChange[] }[];
+  deletes: { id: number; productLine: string; testItemName: string }[];
+  errors: UploadRowError[];
+  warnings: { code: 'MASS_DELETE'; message: string }[];
+}
+
+export interface UploadApplyResult {
+  applied: true;
+  summary: Omit<UploadSummary, 'unchanged'>;
+}
+
+export const previewTemplateUpload = (file: File): Promise<UploadPreviewResult> => {
+  const fd = new FormData();
+  fd.append('file', file);
+  return axiosInstance.post('/template/upload/preview', fd).then(res => res.data);
+};
+
+export const applyTemplateUpload = (file: File, force = false): Promise<UploadApplyResult> => {
+  const fd = new FormData();
+  fd.append('file', file);
+  return axiosInstance
+    .post('/template/upload/apply', fd, { params: force ? { force: 'true' } : {} })
+    .then(res => res.data);
+};

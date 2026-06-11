@@ -3,50 +3,7 @@ import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
 import * as ExcelJS from 'exceljs';
 import { UpdateStdTestItemDto } from './dto/update-std-test-item.dto';
-
-const TABLE_NAME = 'TEMPLATE_STD_TEST_ITEM';
-
-/** 38 market flag columns, in fixed display order (matches ALL_MARKETS on the web side). */
-const MARKET_COLS = [
-  'F1',
-  'F2',
-  'F3',
-  'A0',
-  'A1',
-  'A2',
-  'A3',
-  'A4',
-  'A5',
-  'A6',
-  'A7',
-  'A8',
-  'A9',
-  'N1',
-  'N2',
-  'N3',
-  'E1',
-  'E2',
-  'E3',
-  'E4',
-  'E5',
-  'E6',
-  'K1',
-  'M1',
-  'M2',
-  'M3',
-  'M4',
-  'M5',
-  'M6',
-  'NA',
-  'L1',
-  'L2',
-  'L3',
-  'L4',
-  'L5',
-  'L6',
-  'L7',
-  'L8',
-] as const;
+import { MARKET_COLS, TABLE_NAME } from './template.constants';
 
 type RawRow = Record<string, unknown>;
 

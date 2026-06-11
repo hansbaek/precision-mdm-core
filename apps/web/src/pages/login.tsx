@@ -81,7 +81,7 @@ function Login() {
     // <div className="font-display bg-background-light dark:bg-background-dark min-h-screen flex items-center justify-center">
 
     // </div>
-    <div className="w-full min-h-screen flex flex-col items-center justify-center bg-gray-200">
+    <div className="w-full min-h-screen flex flex-col items-center justify-center bg-background">
       <div className="relative z-10 w-80 max-w-md bg-white dark:bg-slate-900 shadow-sm rounded-md overflow-hidden border border-slate-200 dark:border-slate-800 pt-4">
         <div className="mt-4 flex flex-col items-center text-nowrap">
           <h1 className="block text-xl text-[#707786] antialiased font-hankook">

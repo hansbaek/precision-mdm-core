@@ -1,5 +1,9 @@
-import type { ReactNode } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
+import { animate, useInView } from 'framer-motion';
 import { AlertCircle, Beaker, Database, Globe, Layers } from 'lucide-react';
+
+import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 import type { StdStats } from '@/types';
 
 interface AnalyticsPageProps {
@@ -18,7 +22,7 @@ export default function AnalyticsPage({
   return (
     <div className="space-y-6">
       <div>
-        <nav className="text-[10px] text-secondary font-bold uppercase tracking-widest font-mono">
+        <nav className="text-2xs text-secondary font-bold uppercase tracking-widest font-mono">
           MDM Home / R&D 통계 대시보드
         </nav>
         <h2 className="font-hanken font-extrabold text-primary text-2xl tracking-tight mt-1.5 uppercase">
@@ -37,26 +41,26 @@ export default function AnalyticsPage({
               label="전체 템플릿 항목"
               value={stats.total}
               unit="건"
-              icon={<Database className="h-10 w-10 text-primary bg-surface-base border border-border-subtle p-2 rounded-sm" />}
+              icon={<Database className="h-10 w-10 text-primary bg-muted border border-border p-2 rounded-lg" />}
             />
             <StatCard
               label="제품라인 (Product Line)"
               value={stats.distinctProductLines}
               unit="종"
-              icon={<Layers className="h-10 w-10 text-primary bg-blue-50 p-2 rounded-sm" />}
+              icon={<Layers className="h-10 w-10 text-info bg-info-container p-2 rounded-lg" />}
             />
             <StatCard
               label="시험방법 (Test Method)"
               value={stats.distinctTestMethods}
               unit="종"
-              icon={<Beaker className="h-10 w-10 text-indigo-600 bg-indigo-50 p-2 rounded-sm" />}
+              icon={<Beaker className="h-10 w-10 text-success bg-success-container p-2 rounded-lg" />}
             />
             <StatCard
               label="평균 적용 시장 / 항목"
               value={stats.avgMarketsPerItem}
               unit="개"
               valueClassName="text-accent"
-              icon={<Globe className="h-10 w-10 text-amber-500 bg-amber-50 p-2 rounded-sm" />}
+              icon={<Globe className="h-10 w-10 text-warning bg-warning-container p-2 rounded-lg" />}
             />
           </div>
 
@@ -70,6 +74,28 @@ export default function AnalyticsPage({
       ) : null}
     </div>
   );
+}
+
+/** Animated count-up for stat values. */
+function CountUp({ value, className }: { value: number; className?: string }) {
+  const ref = useRef<HTMLSpanElement>(null);
+  const inView = useInView(ref, { once: true });
+  const isFloat = !Number.isInteger(value);
+
+  useEffect(() => {
+    if (!inView || !ref.current) return;
+    const node = ref.current;
+    const controls = animate(0, value, {
+      duration: 0.8,
+      ease: 'easeOut',
+      onUpdate: (latest) => {
+        node.textContent = isFloat ? latest.toFixed(1) : String(Math.round(latest));
+      },
+    });
+    return () => controls.stop();
+  }, [inView, value, isFloat]);
+
+  return <span ref={ref} className={className}>0</span>;
 }
 
 function StatCard({
@@ -86,13 +112,13 @@ function StatCard({
   valueClassName?: string;
 }) {
   return (
-    <div className="bg-white p-6 border border-border-subtle rounded-sm flex items-center justify-between shadow-xs">
+    <div className="bg-card p-6 border border-border rounded-xl flex items-center justify-between shadow-xs">
       <div className="space-y-1">
-        <span className="text-[10px] text-[#545f72] font-bold uppercase tracking-wider">
+        <span className="text-2xs text-secondary font-bold uppercase tracking-wider">
           {label}
         </span>
         <p className={`text-2xl font-extrabold font-mono ${valueClassName}`}>
-          {value} <span className="text-xs font-normal"> {unit}</span>
+          <CountUp value={value} /> <span className="text-xs font-normal"> {unit}</span>
         </p>
       </div>
       {icon}
@@ -102,7 +128,7 @@ function StatCard({
 
 function ProductLineDistribution({ stats }: { stats: StdStats }) {
   return (
-    <div className="bg-white p-6 border border-border-subtle rounded-sm space-y-5 shadow-xs">
+    <div className="bg-card p-6 border border-border rounded-xl space-y-5 shadow-xs">
       <div className="flex items-center gap-2">
         <Layers className="h-4.5 w-4.5 text-accent" />
         <h3 className="text-xs font-extrabold text-primary uppercase tracking-widest">
@@ -115,14 +141,14 @@ function ProductLineDistribution({ stats }: { stats: StdStats }) {
           return (
             <div key={name} className="space-y-1.5">
               <div className="flex justify-between items-center text-xs font-medium">
-                <span className="text-slate-700 font-semibold font-mono">{name}</span>
-                <span className="text-[#545f72] font-mono font-bold">
+                <span className="text-foreground font-semibold font-mono">{name}</span>
+                <span className="text-secondary font-mono font-bold">
                   {count}건 <span className="text-accent">({pct}%)</span>
                 </span>
               </div>
-              <div className="h-2.5 bg-slate-100 rounded-sm overflow-hidden w-full flex border border-border-subtle">
+              <div className="h-2.5 bg-muted rounded-md overflow-hidden w-full flex border border-border">
                 <div
-                  className="bg-primary h-full rounded-sm transition-all duration-500"
+                  className="bg-chart-1 h-full rounded-md transition-all duration-500"
                   style={{ width: `${pct}%` }}
                 />
               </div>
@@ -136,7 +162,7 @@ function ProductLineDistribution({ stats }: { stats: StdStats }) {
 
 function TestMethodDistribution({ stats }: { stats: StdStats }) {
   return (
-    <div className="bg-white p-6 border border-border-subtle rounded-sm space-y-5 shadow-xs">
+    <div className="bg-card p-6 border border-border rounded-xl space-y-5 shadow-xs">
       <div className="flex items-center gap-2">
         <Beaker className="h-4.5 w-4.5 text-accent" />
         <h3 className="text-xs font-extrabold text-primary uppercase tracking-widest">
@@ -150,16 +176,16 @@ function TestMethodDistribution({ stats }: { stats: StdStats }) {
           return (
             <div key={name} className="space-y-1">
               <div className="flex justify-between items-center text-xs font-medium gap-2">
-                <span className="text-slate-700 font-semibold truncate" title={name}>
+                <span className="text-foreground font-semibold truncate" title={name}>
                   {name}
                 </span>
-                <span className="text-[#545f72] font-mono font-bold shrink-0">
+                <span className="text-secondary font-mono font-bold shrink-0">
                   {count}
                 </span>
               </div>
-              <div className="h-2 bg-slate-100 rounded-sm overflow-hidden w-full flex border border-border-subtle">
+              <div className="h-2 bg-muted rounded-md overflow-hidden w-full flex border border-border">
                 <div
-                  className="bg-indigo-500 h-full rounded-sm transition-all duration-500"
+                  className="bg-chart-4 h-full rounded-md transition-all duration-500"
                   style={{ width: `${pct}%` }}
                 />
               </div>
@@ -175,7 +201,7 @@ function MarketCoverage({ stats }: { stats: StdStats }) {
   const max = Math.max(...stats.marketCoverage.map((m) => m.count), 1);
 
   return (
-    <div className="bg-white p-6 border border-border-subtle rounded-sm space-y-4 shadow-xs">
+    <div className="bg-card p-6 border border-border rounded-xl space-y-4 shadow-xs">
       <div className="flex items-center gap-2">
         <Globe className="h-4.5 w-4.5 text-accent" />
         <h3 className="text-xs font-extrabold text-primary uppercase tracking-widest">
@@ -187,16 +213,16 @@ function MarketCoverage({ stats }: { stats: StdStats }) {
           const pct = Math.round((count / max) * 100) || 0;
           return (
             <div key={code} className="flex items-center gap-2">
-              <span className="text-[11px] font-mono font-bold text-slate-600 w-7 shrink-0">
+              <span className="text-2xs font-mono font-bold text-muted-foreground w-7 shrink-0">
                 {code}
               </span>
-              <div className="h-2 bg-slate-100 rounded-sm overflow-hidden flex-1 flex border border-border-subtle">
+              <div className="h-2 bg-muted rounded-md overflow-hidden flex-1 flex border border-border">
                 <div
-                  className="bg-[#1a56db] h-full rounded-sm transition-all duration-500"
+                  className="bg-info h-full rounded-md transition-all duration-500"
                   style={{ width: `${pct}%` }}
                 />
               </div>
-              <span className="text-[10px] font-mono font-bold text-[#545f72] w-6 text-right shrink-0">
+              <span className="text-2xs font-mono font-bold text-secondary w-6 text-right shrink-0">
                 {count}
               </span>
             </div>
@@ -209,24 +235,46 @@ function MarketCoverage({ stats }: { stats: StdStats }) {
 
 function StatsLoadingState() {
   return (
-    <div className="bg-white border border-border-subtle rounded-sm p-16 flex flex-col items-center justify-center gap-4 shadow-xs">
-      <div className="h-8 w-8 border-[3px] border-primary border-t-transparent rounded-full animate-spin" />
-      <span className="text-xs font-bold text-secondary">집계 통계 로딩 중...</span>
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="bg-card p-6 border border-border rounded-xl flex items-center justify-between shadow-xs">
+            <div className="space-y-2.5 flex-1">
+              <Skeleton className="h-3 w-28" />
+              <Skeleton className="h-7 w-20" />
+            </div>
+            <Skeleton className="h-10 w-10 rounded-lg" />
+          </div>
+        ))}
+      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {Array.from({ length: 2 }).map((_, i) => (
+          <div key={i} className="bg-card p-6 border border-border rounded-xl space-y-4 shadow-xs">
+            <Skeleton className="h-4 w-48" />
+            {Array.from({ length: 4 }).map((_, r) => (
+              <div key={r} className="space-y-1.5">
+                <div className="flex justify-between">
+                  <Skeleton className="h-3 w-24" />
+                  <Skeleton className="h-3 w-12" />
+                </div>
+                <Skeleton className="h-2.5 w-full" />
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
 
 function StatsErrorState({ error, onRetry }: { error: string; onRetry: () => void }) {
   return (
-    <div className="bg-rose-50 border border-rose-200 rounded-sm p-8 flex flex-col items-center gap-3">
-      <AlertCircle className="h-8 w-8 text-rose-500" />
-      <p className="text-sm font-bold text-rose-700">{error}</p>
-      <button
-        onClick={onRetry}
-        className="mt-1 px-4 py-2 bg-primary text-white text-xs font-bold rounded-sm hover:bg-[#003366] transition-colors cursor-pointer"
-      >
+    <div className="bg-destructive/5 border border-destructive/20 rounded-xl p-8 flex flex-col items-center gap-3">
+      <AlertCircle className="h-8 w-8 text-destructive" />
+      <p className="text-sm font-bold text-destructive">{error}</p>
+      <Button size="sm" onClick={onRetry} className="mt-1 text-xs font-bold">
         재시도
-      </button>
+      </Button>
     </div>
   );
 }

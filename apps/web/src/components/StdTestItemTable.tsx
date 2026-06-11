@@ -1,5 +1,40 @@
-import React, { useState } from 'react';
-import { ArrowUpDown, Eye, Edit, MoreVertical } from 'lucide-react';
+import { useState } from 'react';
+import {
+  ArrowUpDown,
+  ChevronDown,
+  ChevronUp,
+  Edit,
+  Eye,
+  MoreVertical,
+  Rows3,
+  StretchHorizontal,
+} from 'lucide-react';
+
+import EmptyState from '@/components/EmptyState';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import type { StdTestItem } from '../types';
 import { ALL_MARKETS } from '../types';
 
@@ -15,6 +50,7 @@ interface Props {
   setCurrentPage: (p: number) => void;
   itemsPerPage: number;
   setItemsPerPage: (n: number) => void;
+  onResetFilters?: () => void;
 }
 
 function MarketChips({ active }: { active: string[] }) {
@@ -26,8 +62,8 @@ function MarketChips({ active }: { active: string[] }) {
         return (
           <span
             key={code}
-            className={`text-[10px] font-mono font-bold leading-none ${
-              on ? 'text-[#1a56db]' : 'text-slate-300'
+            className={`text-2xs font-mono font-bold leading-none ${
+              on ? 'text-info' : 'text-muted-foreground/40'
             }`}
           >
             {code}
@@ -41,24 +77,36 @@ function MarketChips({ active }: { active: string[] }) {
 function SortTh({
   field,
   label,
+  sortBy,
+  sortOrder,
   onSort,
   className = '',
 }: {
   field: string;
   label: string;
+  sortBy: string;
+  sortOrder: 'asc' | 'desc';
   onSort: (field: string) => void;
   className?: string;
 }) {
+  const isActive = sortBy === field;
+  const ariaSort = isActive ? (sortOrder === 'asc' ? 'ascending' : 'descending') : 'none';
+
   return (
-    <th
-      className={`px-4 py-2.5 cursor-pointer hover:bg-slate-100 transition-colors ${className}`}
-      onClick={() => onSort(field)}
-    >
-      <div className="flex items-center gap-1.5">
+    <TableHead aria-sort={ariaSort} className={`px-4 h-12 ${className}`}>
+      <button
+        type="button"
+        onClick={() => onSort(field)}
+        className="flex items-center gap-1.5 w-full uppercase tracking-widest font-hanken font-bold text-2xs text-secondary hover:text-foreground transition-colors cursor-pointer outline-none focus-visible:text-foreground"
+      >
         {label}
-        <ArrowUpDown className="h-3 w-3 text-slate-400 shrink-0" />
-      </div>
-    </th>
+        {isActive
+          ? sortOrder === 'asc'
+            ? <ChevronUp className="h-3 w-3 text-accent shrink-0" />
+            : <ChevronDown className="h-3 w-3 text-accent shrink-0" />
+          : <ArrowUpDown className="h-3 w-3 text-muted-foreground/50 shrink-0" />}
+      </button>
+    </TableHead>
   );
 }
 
@@ -66,19 +114,14 @@ export default function StdTestItemTable({
   items, onView, onEdit,
   sortBy, setSortBy, sortOrder, setSortOrder,
   currentPage, setCurrentPage, itemsPerPage, setItemsPerPage,
+  onResetFilters,
 }: Props) {
-  const [activeMenuId, setActiveMenuId] = useState<number | null>(null);
+  const [compact, setCompact] = useState(false);
 
   const handleSort = (field: string) => {
     if (sortBy === field) setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
     else { setSortBy(field); setSortOrder('asc'); }
   };
-
-  React.useEffect(() => {
-    const close = () => setActiveMenuId(null);
-    window.addEventListener('click', close);
-    return () => window.removeEventListener('click', close);
-  }, []);
 
   const total = items.length;
   const start = (currentPage - 1) * itemsPerPage;
@@ -86,176 +129,228 @@ export default function StdTestItemTable({
   const pageItems = items.slice(start, end);
   const totalPages = Math.ceil(total / itemsPerPage) || 1;
 
+  const cellPad = compact ? 'py-1.5' : 'py-3';
+
   return (
-    <div className="bg-white border border-border-subtle rounded-sm overflow-hidden flex flex-col select-none">
+    <div className="bg-card border border-border rounded-xl overflow-hidden flex flex-col select-none shadow-xs">
 
       {/* Table */}
       <div className="overflow-x-auto w-full">
-        <table className="w-full text-left border-collapse">
-          <thead>
-            <tr className="bg-[#f1f5f9] border-b border-border-subtle text-[11px] text-secondary uppercase tracking-widest font-hanken font-bold h-12 sticky top-0">
-              <SortTh field="id" label="ID" onSort={handleSort} className="w-16 font-mono" />
-              <SortTh field="productLine" label="Product Line" onSort={handleSort} className="w-28" />
-              <SortTh field="testItemName" label="Test Item" onSort={handleSort} className="w-40" />
-              <SortTh field="testMethod" label="Method" onSort={handleSort} className="w-32" />
-              <th className="px-4 py-2.5 w-32">Condition</th>
-              <SortTh field="certiType" label="Certi Type" onSort={handleSort} className="w-28" />
-              <th className="px-4 py-2.5">Market</th>
-              <th className="px-4 py-2.5 text-center w-20">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100 text-xs">
+        <Table className="text-left">
+          <TableHeader>
+            <TableRow className="bg-muted border-b border-border hover:bg-muted sticky top-0 z-[1]">
+              <SortTh field="id" label="ID" sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort} className="w-16 font-mono" />
+              <SortTh field="productLine" label="Product Line" sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort} className="w-28" />
+              <SortTh field="testItemName" label="Test Item" sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort} className="w-40" />
+              <SortTh field="testMethod" label="Method" sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort} className="w-32" />
+              <TableHead className="px-4 h-12 w-32 uppercase tracking-widest font-hanken font-bold text-2xs text-secondary">Condition</TableHead>
+              <SortTh field="certiType" label="Certi Type" sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort} className="w-28" />
+              <TableHead className="px-4 h-12 uppercase tracking-widest font-hanken font-bold text-2xs text-secondary">Market</TableHead>
+              <TableHead className="px-4 h-12 text-center w-20 uppercase tracking-widest font-hanken font-bold text-2xs text-secondary">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody className="text-xs">
             {pageItems.length === 0 ? (
-              <tr>
-                <td colSpan={8} className="px-5 py-14 text-center text-slate-400 font-medium">
-                  표시할 항목이 없습니다.
-                </td>
-              </tr>
+              <TableRow>
+                <TableCell colSpan={8} className="p-0">
+                  <EmptyState
+                    message="표시할 항목이 없습니다."
+                    description="필터 조건을 조정하거나 초기화해 보세요."
+                    actionLabel={onResetFilters ? '필터 초기화' : undefined}
+                    onAction={onResetFilters}
+                  />
+                </TableCell>
+              </TableRow>
             ) : pageItems.map(item => (
-              <tr
+              <TableRow
                 key={item.id}
                 onClick={() => onView(item)}
-                className="hover:bg-surface-base transition-all cursor-pointer"
+                className="hover:bg-muted/50 transition-colors cursor-pointer border-border"
               >
                 {/* ID */}
-                <td className="px-4 py-3 font-mono font-bold text-primary text-xs w-16">
+                <TableCell className={`px-4 ${cellPad} font-mono font-bold text-primary text-xs w-16`}>
                   {item.id}
-                </td>
+                </TableCell>
 
                 {/* Product Line */}
-                <td className="px-4 py-3 font-bold text-xs">
-                  <span className="bg-blue-50 text-blue-700 border border-blue-100 px-2 py-0.5 rounded-sm font-mono text-[11px]">
+                <TableCell className={`px-4 ${cellPad} font-bold text-xs`}>
+                  <Badge className="bg-info-container text-info border-info/20 rounded-md font-mono text-2xs font-bold">
                     {item.productLine || '–'}
-                  </span>
-                </td>
+                  </Badge>
+                </TableCell>
 
                 {/* Test Item */}
-                <td className="px-4 py-3 text-slate-700 font-semibold text-xs">
+                <TableCell className={`px-4 ${cellPad} text-foreground font-semibold text-xs whitespace-normal`}>
                   {item.testItemName || '–'}
-                </td>
+                </TableCell>
 
                 {/* Method */}
-                <td className="px-4 py-3 font-mono font-bold text-slate-800 text-xs">
+                <TableCell className={`px-4 ${cellPad} font-mono font-bold text-foreground text-xs`}>
                   {item.testMethod || '–'}
-                </td>
+                </TableCell>
 
                 {/* Condition */}
-                <td className="px-4 py-3 text-slate-500 font-mono text-xs">
+                <TableCell className={`px-4 ${cellPad} text-muted-foreground font-mono text-xs`}>
                   {item.testCondition || '–'}
-                </td>
+                </TableCell>
 
                 {/* Certi Type */}
-                <td className="px-4 py-3 text-xs">
+                <TableCell className={`px-4 ${cellPad} text-xs`}>
                   {item.certiType
-                    ? <span className="bg-slate-100 text-slate-600 border border-slate-200 px-2 py-0.5 rounded-sm font-mono text-[11px] font-bold">{item.certiType}</span>
-                    : <span className="text-slate-300 font-mono">–</span>}
-                </td>
+                    ? (
+                      <Badge variant="outline" className="rounded-md font-mono text-2xs font-bold text-muted-foreground">
+                        {item.certiType}
+                      </Badge>
+                    )
+                    : <span className="text-muted-foreground/40 font-mono">–</span>}
+                </TableCell>
 
                 {/* Market chips */}
-                <td className="px-4 py-3">
+                <TableCell className={`px-4 ${cellPad}`}>
                   <MarketChips active={item.markets} />
-                </td>
+                </TableCell>
 
                 {/* Actions */}
-                <td
-                  className="px-4 py-3 text-center relative"
+                <TableCell
+                  className={`px-4 ${cellPad} text-center`}
                   onClick={e => e.stopPropagation()}
                 >
-                  <button
-                    onClick={e => { e.stopPropagation(); setActiveMenuId(activeMenuId === item.id ? null : item.id); }}
-                    className="p-1.5 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-800 transition-all"
-                  >
-                    <MoreVertical className="h-4 w-4" />
-                  </button>
-
-                  {activeMenuId === item.id && (
-                    <div className="absolute right-6 top-10 w-36 bg-white border border-border-subtle rounded-sm shadow-md py-1.5 text-left z-20 animate-fade-in">
-                      <button
-                        onClick={() => { onView(item); setActiveMenuId(null); }}
-                        className="w-full px-4 py-2 hover:bg-surface-base text-slate-700 flex items-center gap-2.5 transition-colors cursor-pointer font-semibold text-xs"
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        aria-label={`항목 #${item.id} 작업 메뉴`}
+                        className="rounded-full text-muted-foreground"
                       >
-                        <Eye className="h-4 w-4 text-slate-400" />
+                        <MoreVertical className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-40">
+                      <DropdownMenuItem onSelect={() => onView(item)} className="font-semibold text-xs">
+                        <Eye />
                         상세 보기
-                      </button>
-                      <button
-                        onClick={() => { onEdit(item); setActiveMenuId(null); }}
-                        className="w-full px-4 py-2 hover:bg-surface-base text-slate-700 flex items-center gap-2.5 transition-colors cursor-pointer font-semibold text-xs"
-                      >
-                        <Edit className="h-4 w-4 text-slate-400" />
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onSelect={() => onEdit(item)} className="font-semibold text-xs">
+                        <Edit />
                         수정 (Edit)
-                      </button>
-                    </div>
-                  )}
-                </td>
-              </tr>
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </TableCell>
+              </TableRow>
             ))}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       </div>
 
       {/* Footer / Pagination */}
-      <div className="bg-slate-50 border-t border-border-subtle px-6 py-4 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-secondary select-none font-bold rounded-b-sm">
-        <div className="font-noto font-semibold">
-          Showing <span className="font-bold text-primary">{total ? start + 1 : 0}</span> to{' '}
-          <span className="font-bold text-primary">{end}</span> of{' '}
-          <span className="font-bold text-primary font-mono">{total}</span> items
+      <div className="bg-muted/50 border-t border-border px-6 py-3.5 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-secondary select-none font-bold">
+        <div className="flex items-center gap-3">
+          <div aria-live="polite" className="font-semibold">
+            Showing <span className="font-bold text-primary">{total ? start + 1 : 0}</span> to{' '}
+            <span className="font-bold text-primary">{end}</span> of{' '}
+            <span className="font-bold text-primary font-mono">{total}</span> items
+          </div>
+
+          {/* Density toggle */}
+          <div className="flex items-center rounded-lg border border-border overflow-hidden">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  aria-label="넓은 행 간격 (Comfortable)"
+                  aria-pressed={!compact}
+                  onClick={() => setCompact(false)}
+                  className={`p-1.5 transition-colors cursor-pointer ${!compact ? 'bg-primary text-primary-foreground' : 'bg-card text-muted-foreground hover:bg-muted'}`}
+                >
+                  <StretchHorizontal className="h-3.5 w-3.5" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>Comfortable</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  aria-label="좁은 행 간격 (Compact)"
+                  aria-pressed={compact}
+                  onClick={() => setCompact(true)}
+                  className={`p-1.5 transition-colors cursor-pointer ${compact ? 'bg-primary text-primary-foreground' : 'bg-card text-muted-foreground hover:bg-muted'}`}
+                >
+                  <Rows3 className="h-3.5 w-3.5" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>Compact</TooltipContent>
+            </Tooltip>
+          </div>
         </div>
 
-        <div className="flex items-center gap-1.5">
-          <PagBtn label="|<" onClick={() => setCurrentPage(1)}            disabled={currentPage === 1} />
-          <PagBtn label="<"  onClick={() => setCurrentPage(Math.max(currentPage - 1, 1))} disabled={currentPage === 1} />
+        <nav aria-label="페이지 탐색" className="flex items-center gap-1.5">
+          <PagBtn label="|<" ariaLabel="첫 페이지" onClick={() => setCurrentPage(1)} disabled={currentPage === 1} />
+          <PagBtn label="<" ariaLabel="이전 페이지" onClick={() => setCurrentPage(Math.max(currentPage - 1, 1))} disabled={currentPage === 1} />
           {Array.from({ length: totalPages }, (_, i) => i + 1)
             .filter(p => totalPages <= 5 || Math.abs(p - currentPage) <= 2 || p === 1 || p === totalPages)
             .map((p, idx, arr) => {
               if (idx > 0 && arr[idx - 1] !== p - 1)
                 return [
-                  <span key={`dots-${p}`} className="w-8 h-8 flex items-center justify-center font-mono text-slate-400">…</span>,
+                  <span key={`dots-${p}`} className="w-8 h-8 flex items-center justify-center font-mono text-muted-foreground">…</span>,
                   <PagNumBtn key={p} p={p} current={currentPage} onClick={() => setCurrentPage(p)} />,
                 ];
               return <PagNumBtn key={p} p={p} current={currentPage} onClick={() => setCurrentPage(p)} />;
             })}
-          <PagBtn label=">"  onClick={() => setCurrentPage(Math.min(currentPage + 1, totalPages))} disabled={currentPage === totalPages} />
-          <PagBtn label=">|" onClick={() => setCurrentPage(totalPages)}   disabled={currentPage === totalPages} />
-        </div>
+          <PagBtn label=">" ariaLabel="다음 페이지" onClick={() => setCurrentPage(Math.min(currentPage + 1, totalPages))} disabled={currentPage === totalPages} />
+          <PagBtn label=">|" ariaLabel="마지막 페이지" onClick={() => setCurrentPage(totalPages)} disabled={currentPage === totalPages} />
+        </nav>
 
         <div className="flex items-center gap-2">
           <span className="text-secondary text-xs">Items per page:</span>
-          <select
-            value={itemsPerPage}
-            onChange={e => { setItemsPerPage(Number(e.target.value)); setCurrentPage(1); }}
-            className="bg-white border border-border-subtle rounded-sm py-1 px-2.5 outline-none font-bold h-8 cursor-pointer font-mono text-center text-xs text-slate-700"
+          <Select
+            value={String(itemsPerPage)}
+            onValueChange={(v) => { setItemsPerPage(Number(v)); setCurrentPage(1); }}
           >
-            {[10, 20, 50, 100].map(n => <option key={n} value={n}>{n}</option>)}
-          </select>
+            <SelectTrigger size="sm" className="font-mono font-bold text-xs w-20" aria-label="페이지당 항목 수">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {[10, 20, 50, 100].map(n => (
+                <SelectItem key={n} value={String(n)} className="font-mono text-xs">{n}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       </div>
     </div>
   );
 }
 
-function PagBtn({ label, onClick, disabled }: { label: string; onClick: () => void; disabled: boolean }) {
+function PagBtn({ label, ariaLabel, onClick, disabled }: { label: string; ariaLabel: string; onClick: () => void; disabled: boolean }) {
   return (
-    <button
+    <Button
+      variant="outline"
+      size="icon-sm"
+      aria-label={ariaLabel}
       onClick={onClick}
       disabled={disabled}
-      className="w-8 h-8 bg-white border border-border-subtle rounded-sm hover:bg-slate-50 disabled:opacity-40 disabled:pointer-events-none transition-all font-mono cursor-pointer flex items-center justify-center text-[10px] font-bold"
+      className="font-mono text-2xs font-bold"
     >
       {label}
-    </button>
+    </Button>
   );
 }
 
 function PagNumBtn({ p, current, onClick }: { p: number; current: number; onClick: () => void }) {
+  const isActive = current === p;
   return (
-    <button
+    <Button
+      variant={isActive ? 'default' : 'outline'}
+      size="icon-sm"
+      aria-label={`${p} 페이지`}
+      aria-current={isActive ? 'page' : undefined}
       onClick={onClick}
-      className={`w-8 h-8 rounded-sm font-mono font-bold transition-all cursor-pointer flex items-center justify-center text-xs ${
-        current === p
-          ? 'bg-primary text-white border border-primary shadow-sm'
-          : 'bg-white border border-border-subtle hover:bg-slate-50 text-slate-700'
-      }`}
+      className="font-mono font-bold text-xs"
     >
       {p}
-    </button>
+    </Button>
   );
 }

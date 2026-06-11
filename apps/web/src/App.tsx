@@ -4,8 +4,10 @@
  */
 
 import { useMemo, useState } from 'react';
-import { CheckCircle } from 'lucide-react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { toast } from 'sonner';
 
+import CommandPalette from './components/CommandPalette';
 import Header from './components/Header';
 import Sidebar from './components/Sidebar';
 import StdTestItemDetailModal from './components/StdTestItemDetailModal';
@@ -26,7 +28,7 @@ const INITIAL_FILTERS: FilterOptions = {
 export default function App() {
   const [activeModule, setActiveModule] = useState('test-master');
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [globalSearch, setGlobalSearch] = useState('');
+  const [paletteOpen, setPaletteOpen] = useState(false);
 
   const [filters, setFilters] = useState<FilterOptions>(INITIAL_FILTERS);
   const [appliedFilters, setAppliedFilters] = useState<FilterOptions>(INITIAL_FILTERS);
@@ -37,8 +39,8 @@ export default function App() {
   const [stdItemsPerPage, setStdItemsPerPage] = useState(20);
   const [viewingStdItem, setViewingStdItem] = useState<StdTestItem | null>(null);
   const [editingStdItem, setEditingStdItem] = useState<StdTestItem | null>(null);
-
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  // Where the edit modal was opened from — cancel/save return the user there.
+  const [editOrigin, setEditOrigin] = useState<'table' | 'detail'>('table');
 
   const {
     items: stdItems,
@@ -71,16 +73,23 @@ export default function App() {
     });
   }, [stdItems, stdSortBy, stdSortOrder]);
 
-  const triggerToast = (msg: string) => {
-    setToastMessage(msg);
-    setTimeout(() => {
-      setToastMessage(null);
-    }, 3000);
-  };
-
   const handleStdItemSaved = (updated: StdTestItem) => {
     setStdItems((prev) => prev.map((item) => (item.id === updated.id ? updated : item)));
-    triggerToast(`STD Item #${updated.id} 수정 완료`);
+    setEditingStdItem(null);
+    // Entered from detail view → return there with the updated values visible.
+    if (editOrigin === 'detail') setViewingStdItem(updated);
+    toast.success(`STD Item #${updated.id} 수정 완료`);
+  };
+
+  const handleEditFromTable = (item: StdTestItem) => {
+    setEditOrigin('table');
+    setEditingStdItem(item);
+  };
+
+  const handleEditCancel = () => {
+    // Entered from detail view → return there (values unchanged on cancel).
+    if (editOrigin === 'detail' && editingStdItem) setViewingStdItem(editingStdItem);
+    setEditingStdItem(null);
   };
 
   const handleSearchExecute = () => {
@@ -105,7 +114,7 @@ export default function App() {
   };
 
   return (
-    <div className="flex h-screen w-full bg-surface-base select-none overflow-hidden">
+    <div className="flex h-screen w-full bg-background select-none overflow-hidden">
       <Sidebar
         activeModule={activeModule}
         setActiveModule={setActiveModule}
@@ -116,51 +125,59 @@ export default function App() {
         <Header
           activeTab={activeTab}
           setActiveTab={handleTabChange}
-          globalSearch={globalSearch}
-          setGlobalSearch={setGlobalSearch}
+          onOpenPalette={() => setPaletteOpen(true)}
         />
 
-        <main className="flex-1 overflow-y-auto p-8 space-y-6 bg-[#f7f9fb]">
-          {toastMessage && <ToastMessage message={toastMessage} />}
-
-          {activeTab === 'dashboard' ? (
-            <DashboardPage
-              activeModule={activeModule}
-              setActiveModule={setActiveModule}
-              filters={filters}
-              setFilters={setFilters}
-              onSearch={handleSearchExecute}
-              onReset={handleSearchReset}
-              items={sortedStdItems}
-              loading={stdLoading}
-              error={stdError}
-              onRetry={reloadStdItems}
-              onView={setViewingStdItem}
-              onEdit={setEditingStdItem}
-              sortBy={stdSortBy}
-              setSortBy={setStdSortBy}
-              sortOrder={stdSortOrder}
-              setSortOrder={setStdSortOrder}
-              currentPage={stdCurrentPage}
-              setCurrentPage={setStdCurrentPage}
-              itemsPerPage={stdItemsPerPage}
-              setItemsPerPage={setStdItemsPerPage}
-            />
-          ) : activeTab === 'analytics' ? (
-            <AnalyticsPage
-              stats={stdStats}
-              loading={statsLoading}
-              error={statsError}
-              onRetry={reloadStats}
-            />
-          ) : (
-            <ReportsPage stats={stdStats} />
-          )}
+        <main className="flex-1 overflow-y-auto p-8 bg-background">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={activeTab}
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -4 }}
+              transition={{ duration: 0.15, ease: 'easeOut' }}
+              className="space-y-6"
+            >
+              {activeTab === 'dashboard' ? (
+                <DashboardPage
+                  activeModule={activeModule}
+                  setActiveModule={setActiveModule}
+                  filters={filters}
+                  setFilters={setFilters}
+                  onSearch={handleSearchExecute}
+                  onReset={handleSearchReset}
+                  items={sortedStdItems}
+                  loading={stdLoading}
+                  error={stdError}
+                  onRetry={reloadStdItems}
+                  onView={setViewingStdItem}
+                  onEdit={handleEditFromTable}
+                  sortBy={stdSortBy}
+                  setSortBy={setStdSortBy}
+                  sortOrder={stdSortOrder}
+                  setSortOrder={setStdSortOrder}
+                  currentPage={stdCurrentPage}
+                  setCurrentPage={setStdCurrentPage}
+                  itemsPerPage={stdItemsPerPage}
+                  setItemsPerPage={setStdItemsPerPage}
+                />
+              ) : activeTab === 'analytics' ? (
+                <AnalyticsPage
+                  stats={stdStats}
+                  loading={statsLoading}
+                  error={statsError}
+                  onRetry={reloadStats}
+                />
+              ) : (
+                <ReportsPage stats={stdStats} />
+              )}
+            </motion.div>
+          </AnimatePresence>
         </main>
 
-        <footer className="h-12 bg-primary border-t border-transparent px-6 flex items-center justify-between text-[11px] text-[#eff1f3] shrink-0">
+        <footer className="h-12 bg-sidebar border-t border-sidebar-border px-6 flex items-center justify-between text-2xs text-sidebar-foreground shrink-0">
           <span>&copy; 2026 Hankook Tire & Technology. All Rights Reserved.</span>
-          <div className="flex items-center gap-4 text-[#eff1f3]/70 font-semibold select-none">
+          <div className="flex items-center gap-4 text-sidebar-foreground/70 font-semibold select-none">
             <a href="#privacy" className="hover:text-white transition-all">
               Privacy Policy
             </a>
@@ -172,12 +189,25 @@ export default function App() {
         </footer>
       </div>
 
+      <CommandPalette
+        open={paletteOpen}
+        onOpenChange={setPaletteOpen}
+        items={sortedStdItems}
+        onSelectTab={handleTabChange}
+        onSelectModule={(module) => {
+          setActiveTab('dashboard');
+          setActiveModule(module);
+        }}
+        onViewItem={setViewingStdItem}
+      />
+
       <StdTestItemDetailModal
         isOpen={viewingStdItem !== null}
         item={viewingStdItem}
         onClose={() => setViewingStdItem(null)}
         onEdit={(item) => {
           setViewingStdItem(null);
+          setEditOrigin('detail');
           setEditingStdItem(item);
         }}
       />
@@ -185,18 +215,9 @@ export default function App() {
       <StdTestItemEditModal
         isOpen={editingStdItem !== null}
         item={editingStdItem}
-        onClose={() => setEditingStdItem(null)}
+        onClose={handleEditCancel}
         onSaved={handleStdItemSaved}
       />
-    </div>
-  );
-}
-
-function ToastMessage({ message }: { message: string }) {
-  return (
-    <div className="fixed bottom-6 right-6 bg-primary border border-[#003366] text-white px-5 py-4 rounded-sm flex items-center gap-3 shadow-2xl z-50 animate-fade-in text-xs">
-      <CheckCircle className="h-4.5 w-4.5 text-accent animate-pulse" />
-      <span className="font-bold">{message}</span>
     </div>
   );
 }
