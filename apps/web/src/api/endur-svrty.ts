@@ -20,6 +20,10 @@ export interface SvrtySuggestResult {
   reason?: 'UNSUPPORTED_METHOD' | 'NO_MARKETS' | 'NO_APPLICABLE_REGULATION';
 }
 
+/** 규제 코드 목록 — CERTI_TYPE 멀티콤보 옵션 소스 */
+export const getRegulationCodes = (): Promise<string[]> =>
+  axiosInstance.get('/endur-svrty/regulations').then(res => res.data);
+
 /** 시장 기반 내구 가혹도 제안 ([별첨11] 순위 마스터 기반) */
 export const suggestEndurSvrty = (params: {
   productLine: string;

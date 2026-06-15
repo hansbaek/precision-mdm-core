@@ -142,6 +142,14 @@ export class EndurSvrtyService {
     };
   }
 
+  /** Distinct regulation codes — option source for the CERTI_TYPE combo. */
+  async findRegulations(): Promise<string[]> {
+    const rows: { REGULATION_CODE: string }[] = await this.dataSource.query(
+      `SELECT DISTINCT REGULATION_CODE FROM ${MAP_TABLE} WHERE USE_YN = 'Y' ORDER BY REGULATION_CODE`,
+    );
+    return rows.map((r) => r.REGULATION_CODE);
+  }
+
   async findRanks() {
     const rows: Record<string, unknown>[] = await this.dataSource.query(
       `SELECT * FROM ${RANK_TABLE} WHERE USE_YN = 'Y'

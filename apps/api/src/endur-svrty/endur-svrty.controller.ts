@@ -45,6 +45,15 @@ export class EndurSvrtyController {
     return this.service.suggest(productLine, markets ?? '', testMethod, ss);
   }
 
+  @Get('regulations')
+  @ApiOperation({
+    summary: '규제 코드 목록 (CERTI_TYPE 콤보 소스)',
+    description: 'DW_REGULATION_MARKET_MAP의 distinct REGULATION_CODE.',
+  })
+  findRegulations() {
+    return this.service.findRegulations();
+  }
+
   @Get('ranks')
   @ApiOperation({ summary: '가혹도 순위 마스터 전체 목록 (검증·관리용)' })
   findRanks() {

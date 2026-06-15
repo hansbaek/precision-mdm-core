@@ -20,7 +20,7 @@ import {
   getTestClassificationItems,
   getTestClassificationMethods,
 } from '../api/test-classification';
-import { suggestEndurSvrty, type SvrtySuggestResult } from '../api/endur-svrty';
+import { getRegulationCodes, suggestEndurSvrty, type SvrtySuggestResult } from '../api/endur-svrty';
 import { useStdCodes } from '../hooks/use-std-codes';
 import type { StdTestItem } from '../types';
 import { ALL_MARKETS } from '../types';
@@ -118,11 +118,9 @@ const EDIT_GROUPS: EditGroup[] = [
     ],
   },
   {
-    title: '3. 인증 / 특수 시험 속성',
-    description: '인증 및 특수 시험 속성 플래그를 수정합니다.',
+    title: '3. 특수 시험 속성',
+    description: '특수 시험 속성 플래그를 수정합니다. (인증 정보는 7. 시장 적용 정보로 이동)',
     fields: [
-      { key: 'certiTtm', column: 'CERTI_TTM', label: '인증 여부 (Y/N)', type: 'flag' },
-      { key: 'certiType', column: 'CERTI_TYPE', label: '인증 기관 / 유형' },
       { key: 'tempTire', column: 'TEMP_TIRE', label: '임시타이어 여부', type: 'flag' },
       { key: 'snowMark', column: 'SNOW_MARK', label: '스노우 마크 여부', type: 'flag' },
       { key: 'frt', column: 'FRT', label: 'Free Rolling Tire 여부', type: 'flag' },
@@ -201,6 +199,24 @@ export default function StdTestItemEditModal({ isOpen, item, onClose, onSaved }:
   const [selectedMarkets, setSelectedMarkets] = useState<Set<string>>(new Set());
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Regulation codes back the CERTI_TYPE multi-combo (DW_REGULATION_MARKET_MAP)
+  const [regulationOptions, setRegulationOptions] = useState<string[]>([]);
+
+  useEffect(() => {
+    let ignore = false;
+    const load = async () => {
+      try {
+        const data = await getRegulationCodes();
+        if (!ignore) setRegulationOptions(data);
+      } catch {
+        /* 콤보 옵션만 비워둠 — 폼은 계속 사용 가능 */
+      }
+    };
+    void load();
+    return () => {
+      ignore = true;
+    };
+  }, []);
 
   // DW_STD_CODE-backed option lists (fetched once; modal stays mounted in App)
   const { data: productLineCodes } = useStdCodes('PRODUCT_LINE', 2);
@@ -348,6 +364,11 @@ export default function StdTestItemEditModal({ isOpen, item, onClose, onSaved }:
             endurSvrty={form.endurSvrty}
             onEndurSvrtyChange={(v) => handleFieldChange('endurSvrty', v)}
             endurSvrtyOptions={optionsByColumn.ENDUR_SVRTY}
+            certiTtm={form.certiTtm}
+            onCertiTtmChange={(v) => handleFieldChange('certiTtm', v)}
+            certiType={form.certiType}
+            onCertiTypeChange={(v) => handleFieldChange('certiType', v)}
+            regulationOptions={regulationOptions}
             productLine={form.productLine}
             testMethod={form.testMethod}
             ss={form.ss}
@@ -712,6 +733,11 @@ function MarketEditSection({
   endurSvrty,
   onEndurSvrtyChange,
   endurSvrtyOptions,
+  certiTtm,
+  onCertiTtmChange,
+  certiType,
+  onCertiTypeChange,
+  regulationOptions,
   productLine,
   testMethod,
   ss,
@@ -722,6 +748,11 @@ function MarketEditSection({
   endurSvrty: string;
   onEndurSvrtyChange: (value: string) => void;
   endurSvrtyOptions: string[];
+  certiTtm: string;
+  onCertiTtmChange: (value: string) => void;
+  certiType: string;
+  onCertiTypeChange: (value: string) => void;
+  regulationOptions: string[];
   productLine: string;
   testMethod: string;
   ss: string;
@@ -769,18 +800,50 @@ function MarketEditSection({
 
   return (
     <section className="bg-card border border-border rounded-xl shadow-xs overflow-hidden">
-      <div className="px-5 py-3 border-b border-border flex items-end justify-between gap-4 flex-wrap">
-        <div>
-          <h3 className="text-xs font-extrabold text-primary uppercase tracking-widest">
-            7. 시장 적용 정보
-          </h3>
-          <p className="text-2xs text-secondary mt-1">
-            38개 마켓 플래그 컬럼을 클릭하여 적용 여부를 토글합니다. 현재 {selectedMarkets.size}개
-            선택
-          </p>
+      <div className="px-5 py-3 border-b border-border">
+        <h3 className="text-xs font-extrabold text-primary uppercase tracking-widest">
+          7. 시장 적용 정보
+        </h3>
+        <p className="text-2xs text-secondary mt-1">
+          38개 마켓 플래그 컬럼을 클릭하여 적용 여부를 토글합니다. 현재 {selectedMarkets.size}개
+          선택
+        </p>
+      </div>
+
+      {/* 법규/인증 (시장 도출) — 인증여부·인증유형·가혹도는 타겟 시장의 법규에서 도출 */}
+      <div className="px-5 py-4 border-b border-border grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="min-w-0">
+          <div className="flex items-center justify-between gap-2 mb-1.5">
+            <label className="text-2xs font-bold text-secondary uppercase tracking-wider">
+              CERTI_TTM
+            </label>
+            <span className="text-2xs text-muted-foreground/70 truncate">인증 여부 (Y/N)</span>
+          </div>
+          <FlagToggle
+            id="edit-flag-certi-ttm"
+            value={certiTtm}
+            onChange={onCertiTtmChange}
+            disabled={disabled}
+          />
         </div>
-        {/* 가혹도는 타겟 시장의 법규에서 도출되는 값 — 시장 섹션에 배치 */}
-        <div className="w-44 shrink-0">
+        <div className="min-w-0">
+          <div className="flex items-center justify-between gap-2 mb-1.5">
+            <label className="text-2xs font-bold text-secondary uppercase tracking-wider">
+              CERTI_TYPE
+            </label>
+            <span className="text-2xs text-muted-foreground/70 truncate">인증 기관 / 유형</span>
+          </div>
+          <MultiCombobox
+            id="edit-combo-certi-type"
+            value={certiType}
+            onChange={onCertiTypeChange}
+            options={regulationOptions}
+            separator=","
+            placeholder="인증 유형 선택"
+            disabled={disabled}
+          />
+        </div>
+        <div className="min-w-0">
           <div className="flex items-center justify-between gap-2 mb-1.5">
             <label className="text-2xs font-bold text-secondary uppercase tracking-wider">
               ENDUR_SVRTY

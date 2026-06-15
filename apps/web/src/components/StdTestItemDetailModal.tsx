@@ -113,11 +113,9 @@ function buildDetailGroups(item: StdTestItem): DetailGroup[] {
       ],
     },
     {
-      title: '3. 인증 / 특수 시험 속성',
-      description: '인증 여부와 특수 시험/타이어 속성 플래그입니다.',
+      title: '3. 특수 시험 속성',
+      description: '특수 시험/타이어 속성 플래그입니다. (인증 정보는 7. 시장 적용 정보로 이동)',
       fields: [
-        { column: 'CERTI_TTM', label: '인증 여부 (Y/N)', value: item.certiTtm, badge: true },
-        { column: 'CERTI_TYPE', label: '인증 기관 / 유형', value: item.certiType },
         { column: 'TEMP_TIRE', label: '임시타이어 여부', value: item.tempTire, badge: true },
         { column: 'SNOW_MARK', label: '스노우 마크 여부', value: item.snowMark, badge: true },
         { column: 'FRT', label: 'Free Rolling Tire 여부', value: item.frt, badge: true },
@@ -246,30 +244,56 @@ function MarketSection({ item }: { item: StdTestItem }) {
 
   return (
     <section className="bg-card border border-border rounded-xl shadow-xs overflow-hidden">
-      <div className="px-5 py-3 border-b border-border flex items-center justify-between gap-4 flex-wrap">
-        <div>
-          <h3 className="text-xs font-extrabold text-primary uppercase tracking-widest">
-            7. 시장 적용 정보
-          </h3>
-          <p className="text-2xs text-secondary mt-1">
-            F/A/N/E/K/M/NA/L 그룹별 38개 마켓 플래그 컬럼입니다. 적용 {item.markets.length}개 /
-            전체 38개
-          </p>
+      <div className="px-5 py-3 border-b border-border">
+        <h3 className="text-xs font-extrabold text-primary uppercase tracking-widest">
+          7. 시장 적용 정보
+        </h3>
+        <p className="text-2xs text-secondary mt-1">
+          F/A/N/E/K/M/NA/L 그룹별 38개 마켓 플래그 컬럼입니다. 적용 {item.markets.length}개 /
+          전체 38개
+        </p>
+      </div>
+
+      {/* 법규/인증 (시장 도출) — 인증여부·인증유형·가혹도 */}
+      <div className="px-5 py-4 border-b border-border grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="space-y-1.5 min-w-0">
+          <label className="text-2xs font-bold text-secondary uppercase tracking-wider">
+            CERTI_TTM · 인증 여부
+          </label>
+          <div><FlagBadge value={formatValue(item.certiTtm)} /></div>
         </div>
-        {/* 가혹도는 타겟 시장의 법규에서 도출되는 값 — 시장 섹션에 표시 */}
-        <div className="flex items-center gap-2 shrink-0">
-          <span className="text-2xs font-bold text-secondary uppercase tracking-wider">
+        <div className="space-y-1.5 min-w-0">
+          <label className="text-2xs font-bold text-secondary uppercase tracking-wider">
+            CERTI_TYPE · 인증 유형
+          </label>
+          <div className="flex flex-wrap gap-1">
+            {item.certiType
+              ? item.certiType.split(/,\s*/).filter(Boolean).map((code) => (
+                  <Badge
+                    key={code}
+                    className="bg-info-container text-info border-info/20 rounded-md font-mono text-2xs font-bold"
+                  >
+                    {code}
+                  </Badge>
+                ))
+              : <span className="text-sm font-semibold text-muted-foreground/60">–</span>}
+          </div>
+        </div>
+        <div className="space-y-1.5 min-w-0">
+          <label className="text-2xs font-bold text-secondary uppercase tracking-wider">
             ENDUR_SVRTY · 내구 가혹도
-          </span>
-          <span
-            className={`inline-flex items-center px-3 py-1.5 rounded-lg border text-sm font-bold font-mono ${
-              item.endurSvrty
-                ? 'bg-info-container text-info border-info/20'
-                : 'bg-muted/60 text-muted-foreground/60 border-border'
-            }`}
-          >
-            {item.endurSvrty || '–'}
-          </span>
+          </label>
+          <div>
+            <span
+              className={`inline-flex items-center px-3 py-1.5 rounded-lg border text-sm font-bold font-mono ${
+                item.endurSvrty
+                  ? 'bg-info-container text-info border-info/20'
+                  : 'bg-muted/60 text-muted-foreground/60 border-border'
+              }`}
+            >
+              {item.endurSvrty || '–'}
+            </span>
+          </div>
         </div>
       </div>
       <div className="p-5 grid grid-cols-1 lg:grid-cols-2 gap-4">
