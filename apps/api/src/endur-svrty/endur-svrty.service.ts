@@ -28,6 +28,15 @@ export interface SuggestResult {
   reason?: 'UNSUPPORTED_METHOD' | 'NO_MARKETS' | 'NO_APPLICABLE_REGULATION';
 }
 
+export interface CertiTypeSuggestResult {
+  /** Distinct regulation codes applicable to the selected markets. */
+  suggested: string[];
+  /** Per-market breakdown of applicable regulations (for explanation). */
+  byMarket: { marketCode: string; regulationCodes: string[] }[];
+  /** Selected markets with no regulation mapping. */
+  unmappedMarkets: string[];
+}
+
 interface RankRow {
   TEST_CDN_NAME: string;
   REGULATION_CODE: string;
@@ -138,6 +147,50 @@ export class EndurSvrtyService {
       category,
       speedGrade: category === 'HS' ? speedGrade : null,
       speedGradeAssumed: category === 'HS' ? assumed : false,
+      unmappedMarkets,
+    };
+  }
+
+  /**
+   * Suggest CERTI_TYPE (regulation codes) from the selected markets.
+   * CERTI_TYPE values are regulation codes, so the suggestion is simply the set
+   * of regulations mapped to the chosen markets via DW_REGULATION_MARKET_MAP.
+   */
+  async suggestCertiType(markets: string): Promise<CertiTypeSuggestResult> {
+    const marketList = (markets ?? '')
+      .split(/[,\s]+/)
+      .map((m) => m.trim().toUpperCase())
+      .filter(Boolean);
+    if (marketList.length === 0) {
+      return { suggested: [], byMarket: [], unmappedMarkets: [] };
+    }
+
+    const binds = marketList.map((_, i) => `:${i + 1}`).join(', ');
+    const rows: { MARKET_CODE: string; REGULATION_CODE: string }[] =
+      await this.dataSource.query(
+        `SELECT MARKET_CODE, REGULATION_CODE FROM ${MAP_TABLE}
+         WHERE USE_YN = 'Y' AND MARKET_CODE IN (${binds})
+         ORDER BY MARKET_CODE, REGULATION_CODE`,
+        marketList,
+      );
+
+    const byMarketMap = new Map<string, string[]>();
+    const suggestedSet = new Set<string>();
+    for (const r of rows) {
+      suggestedSet.add(r.REGULATION_CODE);
+      const arr = byMarketMap.get(r.MARKET_CODE) ?? [];
+      arr.push(r.REGULATION_CODE);
+      byMarketMap.set(r.MARKET_CODE, arr);
+    }
+
+    const unmappedMarkets = marketList.filter((m) => !byMarketMap.has(m));
+
+    return {
+      suggested: [...suggestedSet].sort(),
+      byMarket: [...byMarketMap.entries()].map(([marketCode, regulationCodes]) => ({
+        marketCode,
+        regulationCodes,
+      })),
       unmappedMarkets,
     };
   }

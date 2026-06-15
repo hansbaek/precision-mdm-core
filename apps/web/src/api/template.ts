@@ -35,8 +35,9 @@ export type StdTestItemUpdate = Partial<{
   testItemName: string;
   testMethod: string;
   testCondition: string;
+  cdnPattern: string;
   endurSvrty: string;
-  certiTtm: string;
+  certiTestYn: string;
   certiType: string;
   tempTire: string;
   snowMark: string;

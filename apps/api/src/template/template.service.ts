@@ -58,8 +58,9 @@ export class TemplateService {
       testItemName: this.cell(r, 'TEST_ITEM_NAME'),
       testMethod: this.cell(r, 'TEST_MTH_NAME'),
       testCondition: this.cell(r, 'TEST_CDN_NAME'),
+      cdnPattern: this.cell(r, 'CDN_PATTERN'),
       endurSvrty: this.cell(r, 'ENDUR_SVRTY'),
-      certiTtm: this.cell(r, 'CERTI_TTM'),
+      certiTestYn: this.cell(r, 'CERTI_TEST_YN'),
       certiType: this.cell(r, 'CERTI_TYPE'),
       tempTire: this.cell(r, 'TEMP_TIRE'),
       snowMark: this.cell(r, 'SNOW_MARK'),
@@ -142,19 +143,26 @@ export class TemplateService {
   }
 
   async updateStdTestItem(id: number, dto: UpdateStdTestItemDto) {
-    await this.findOneStdTestItem(id); // 404 if missing
+    const existing = await this.findOneStdTestItem(id); // 404 if missing
 
     const setClauses: string[] = [];
     const params: unknown[] = [];
     let idx = 1;
 
-    const textMap: Record<string, string | undefined> = {
+    // TBR-only columns are valid only when PRODUCT_LINE is TBR. For any other
+    // product line they are forced to NULL — blocking TBR values from being
+    // saved and clearing them when a row is switched away from TBR.
+    const effectivePL = (dto.productLine ?? existing.productLine ?? '').toUpperCase();
+    const isTbr = effectivePL === 'TBR';
+
+    const textMap: Record<string, string | null | undefined> = {
       PRODUCT_LINE: dto.productLine,
       TEST_ITEM_NAME: dto.testItemName,
       TEST_MTH_NAME: dto.testMethod,
       TEST_CDN_NAME: dto.testCondition,
+      CDN_PATTERN: dto.cdnPattern,
       ENDUR_SVRTY: dto.endurSvrty,
-      CERTI_TTM: dto.certiTtm,
+      CERTI_TEST_YN: dto.certiTestYn,
       CERTI_TYPE: dto.certiType,
       TEMP_TIRE: dto.tempTire,
       SNOW_MARK: dto.snowMark,
@@ -168,10 +176,10 @@ export class TemplateService {
       LI: dto.li,
       PLY_RATING: dto.plyRating,
       TL_INDICATOR: dto.tlIndicator,
-      TBR_POSITION: dto.tbrPosition,
-      TBR_GRV_3: dto.tbrGrv3,
-      TBR_SEGMENT: dto.tbrSegment,
-      TBR_ITEM_CNT_PER_BARCODE: dto.tbrItemCntPerBarcode,
+      TBR_POSITION: isTbr ? dto.tbrPosition : null,
+      TBR_GRV_3: isTbr ? dto.tbrGrv3 : null,
+      TBR_SEGMENT: isTbr ? dto.tbrSegment : null,
+      TBR_ITEM_CNT_PER_BARCODE: isTbr ? dto.tbrItemCntPerBarcode : null,
       NEW_SIZE_YN: dto.newSizeYn,
       SIZE_SMPL: dto.sizeSmpl,
     };

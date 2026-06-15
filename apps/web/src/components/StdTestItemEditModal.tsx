@@ -1,8 +1,11 @@
 import { useState, useEffect } from 'react';
-import { AlertTriangle, Check, Save, Wand2 } from 'lucide-react';
+import { AlertTriangle, Check, Lock, Save, Wand2 } from 'lucide-react';
 
 import FlagToggle from '@/components/FlagToggle';
+import MappedFlagToggle from '@/components/MappedFlagToggle';
+import CdnPatternBuilder from '@/components/CdnPatternBuilder';
 import MultiCombobox from '@/components/MultiCombobox';
+import RangeInput from '@/components/RangeInput';
 import SearchCombobox from '@/components/SearchCombobox';
 import { Button } from '@/components/ui/button';
 import {
@@ -20,7 +23,13 @@ import {
   getTestClassificationItems,
   getTestClassificationMethods,
 } from '../api/test-classification';
-import { getRegulationCodes, suggestEndurSvrty, type SvrtySuggestResult } from '../api/endur-svrty';
+import {
+  getRegulationCodes,
+  suggestCertiType,
+  suggestEndurSvrty,
+  type CertiTypeSuggestResult,
+  type SvrtySuggestResult,
+} from '../api/endur-svrty';
 import { useStdCodes } from '../hooks/use-std-codes';
 import type { StdTestItem } from '../types';
 import { ALL_MARKETS } from '../types';
@@ -31,8 +40,9 @@ type FormState = {
   testItemName: string;
   testMethod: string;
   testCondition: string;
+  cdnPattern: string;
   endurSvrty: string;
-  certiTtm: string;
+  certiTestYn: string;
   certiType: string;
   tempTire: string;
   snowMark: string;
@@ -54,7 +64,7 @@ type FormState = {
   sizeSmpl: string;
 };
 
-type EditFieldType = 'text' | 'select' | 'flag' | 'multi';
+type EditFieldType = 'text' | 'select' | 'flag' | 'multi' | 'range';
 
 type EditFieldConfig = {
   key: keyof FormState;
@@ -62,16 +72,29 @@ type EditFieldConfig = {
   label: string;
   mono?: boolean;
   wide?: boolean;
+  /** Span the full grid row (all 4 columns on xl). */
+  full?: boolean;
   /** Input widget — defaults to free text. */
   type?: EditFieldType;
   /** DW_STD_CODE group backing 'select'/'multi' option lists. */
   codeGrp?: string;
+  /** 'multi' token separator — defaults to ', '. */
+  separator?: string;
+  /** 'multi' option highlighted by default when the list opens. */
+  defaultHighlight?: string;
+  /** 'range' unit hint shown after the value (e.g. 'inch', 'mm', 'LI', 'PR'). */
+  unit?: string;
+  /** 'flag' value mapping — Y stores flagOn, N stores flagOff (e.g. POR: 'S'/''). */
+  flagOn?: string;
+  flagOff?: string;
 };
 
 type EditGroup = {
   title: string;
   description: string;
   fields: EditFieldConfig[];
+  /** Section is editable only when PRODUCT_LINE equals this value (e.g. 'TBR'). */
+  requiresProductLine?: string;
 };
 
 const EMPTY_FORM: FormState = {
@@ -79,8 +102,9 @@ const EMPTY_FORM: FormState = {
   testItemName: '',
   testMethod: '',
   testCondition: '',
+  cdnPattern: '',
   endurSvrty: '',
-  certiTtm: '',
+  certiTestYn: '',
   certiType: '',
   tempTire: '',
   snowMark: '',
@@ -118,26 +142,52 @@ const EDIT_GROUPS: EditGroup[] = [
     ],
   },
   {
-    title: '3. 특수 시험 속성',
-    description: '특수 시험 속성 플래그를 수정합니다. (인증 정보는 7. 시장 적용 정보로 이동)',
+    title: '4. 특수 시험 속성',
+    description: '특수 시험 속성 플래그를 수정합니다. (인증 정보는 3. 시장 적용 정보로 이동)',
     fields: [
-      { key: 'tempTire', column: 'TEMP_TIRE', label: '임시타이어 여부', type: 'flag' },
+      { key: 'tempTire', column: 'TEMP_TIRE', label: '스페어(임시)타이어 여부', type: 'flag' },
       { key: 'snowMark', column: 'SNOW_MARK', label: '스노우 마크 여부', type: 'flag' },
       { key: 'frt', column: 'FRT', label: 'Free Rolling Tire 여부', type: 'flag' },
       { key: 'utqg', column: 'UTQG', label: 'UTQG 여부', type: 'flag' },
-      { key: 'por', column: 'POR', label: 'Professional Off Road Tire 여부', mono: true },
+      {
+        key: 'por',
+        column: 'POR',
+        label: 'Professional Off Road Tire (Y→S / N→공백)',
+        type: 'flag',
+        flagOn: 'S',
+        flagOff: '',
+      },
     ],
   },
   {
-    title: '4. 타이어 구조 / 기본 스펙 조건',
-    description: '구조, 림, 그루브, 속도/하중 조건을 수정합니다.',
+    title: '5. 타이어 구조 / 기본 스펙 조건',
+    description: '1줄: 속도 기호 / 2줄: 림·그루브·하중·플라이 범위 / 3줄: 구조·TL 구분.',
     fields: [
-      { key: 'radialBias', column: 'RADIAL_BIAS', label: '레이디얼/바이어스 구분' },
-      { key: 'rimInch', column: 'RIM_INCH', label: '림 인치 조건', mono: true },
-      { key: 'grvDepth', column: 'GRV_DEPTH', label: '그루브 깊이 조건', mono: true },
-      { key: 'ss', column: 'SS', label: '속도 기호 목록', mono: true, wide: true },
-      { key: 'li', column: 'LI', label: '하중 지수 조건', mono: true },
-      { key: 'plyRating', column: 'PLY_RATING', label: '플라이 레이팅', mono: true },
+      // 1줄 — 속도 기호 (전체 폭, 다중 선택)
+      {
+        key: 'ss',
+        column: 'SS',
+        label: '속도 기호 (다중 선택 · 콤마 구분)',
+        type: 'multi',
+        codeGrp: 'SPEED_SYMBOL',
+        separator: ',',
+        defaultHighlight: 'T',
+        full: true,
+      },
+      // 2줄 — 범위 입력 항목 4개
+      { key: 'rimInch', column: 'RIM_INCH', label: '림 인치 조건', type: 'range', unit: 'inch' },
+      { key: 'grvDepth', column: 'GRV_DEPTH', label: '그루브 깊이 조건', type: 'range', unit: 'mm' },
+      { key: 'li', column: 'LI', label: '하중 지수 조건', type: 'range', unit: 'LI' },
+      { key: 'plyRating', column: 'PLY_RATING', label: '플라이 레이팅', type: 'range', unit: 'PR' },
+      // 3줄 — 구조 / TL 구분
+      {
+        key: 'radialBias',
+        column: 'RADIAL_BIAS',
+        label: '레이디얼/바이어스 (R/B · 미지정 가능)',
+        mono: true,
+        type: 'select',
+        codeGrp: 'RADIAL_BIAS',
+      },
       {
         key: 'tlIndicator',
         column: 'TL_INDICATOR',
@@ -149,8 +199,9 @@ const EDIT_GROUPS: EditGroup[] = [
     ],
   },
   {
-    title: '5. TBR 전용 조건',
+    title: '6. TBR 전용 조건',
     description: 'TBR 포지션, 그루브, 세그먼트, 바코드당 항목 수 조건입니다.',
+    requiresProductLine: 'TBR',
     fields: [
       {
         key: 'tbrPosition',
@@ -178,7 +229,7 @@ const EDIT_GROUPS: EditGroup[] = [
     ],
   },
   {
-    title: '6. 사이즈 / 샘플 조건',
+    title: '7. 사이즈 / 샘플 조건',
     description: '신규 사이즈 여부와 특정 사이즈 샘플 지정 조건입니다.',
     fields: [
       { key: 'newSizeYn', column: 'NEW_SIZE_YN', label: '신규 사이즈 여부', type: 'flag' },
@@ -221,6 +272,8 @@ export default function StdTestItemEditModal({ isOpen, item, onClose, onSaved }:
   // DW_STD_CODE-backed option lists (fetched once; modal stays mounted in App)
   const { data: productLineCodes } = useStdCodes('PRODUCT_LINE', 2);
   const { data: endurSvrtyCodes } = useStdCodes('ENDUR_SVRTY');
+  const { data: radialBiasCodes } = useStdCodes('RADIAL_BIAS');
+  const { data: speedSymbolCodes } = useStdCodes('SPEED_SYMBOL');
   const { data: tlIndicatorCodes } = useStdCodes('TL_INDICATOR');
   const { data: tbrItemCntCodes } = useStdCodes('TBR_ITEM_CNT_PER_BARCODE');
   const { data: tbrPositionCodes } = useStdCodes('TBR_POSITION');
@@ -230,6 +283,8 @@ export default function StdTestItemEditModal({ isOpen, item, onClose, onSaved }:
     // 'ALL' is a filter-only umbrella code — not a valid stored value
     PRODUCT_LINE: productLineCodes.map((c) => c.codeCd).filter((cd) => cd !== 'ALL'),
     ENDUR_SVRTY: endurSvrtyCodes.map((c) => c.codeCd),
+    RADIAL_BIAS: radialBiasCodes.map((c) => c.codeCd),
+    SPEED_SYMBOL: speedSymbolCodes.map((c) => c.codeCd),
     TL_INDICATOR: tlIndicatorCodes.map((c) => c.codeCd),
     TBR_ITEM_CNT_PER_BARCODE: tbrItemCntCodes.map((c) => c.codeCd),
     TBR_POSITION: tbrPositionCodes.map((c) => c.codeCd),
@@ -243,8 +298,9 @@ export default function StdTestItemEditModal({ isOpen, item, onClose, onSaved }:
         testItemName: item.testItemName,
         testMethod: item.testMethod,
         testCondition: item.testCondition,
+        cdnPattern: item.cdnPattern,
         endurSvrty: item.endurSvrty,
-        certiTtm: item.certiTtm,
+        certiTestYn: item.certiTestYn,
         certiType: item.certiType,
         tempTire: item.tempTire,
         snowMark: item.snowMark,
@@ -345,18 +401,7 @@ export default function StdTestItemEditModal({ isOpen, item, onClose, onSaved }:
             disabled={saving}
           />
 
-          {/* Sections 3+ */}
-          {EDIT_GROUPS.slice(1).map((group) => (
-            <EditSection
-              key={group.title}
-              group={group}
-              form={form}
-              onChange={handleFieldChange}
-              disabled={saving}
-              optionsByColumn={optionsByColumn}
-            />
-          ))}
-
+          {/* Section 3 (시장 적용 정보) */}
           <MarketEditSection
             selectedMarkets={selectedMarkets}
             onToggle={toggleMarket}
@@ -364,8 +409,8 @@ export default function StdTestItemEditModal({ isOpen, item, onClose, onSaved }:
             endurSvrty={form.endurSvrty}
             onEndurSvrtyChange={(v) => handleFieldChange('endurSvrty', v)}
             endurSvrtyOptions={optionsByColumn.ENDUR_SVRTY}
-            certiTtm={form.certiTtm}
-            onCertiTtmChange={(v) => handleFieldChange('certiTtm', v)}
+            certiTestYn={form.certiTestYn}
+            onCertiTestYnChange={(v) => handleFieldChange('certiTestYn', v)}
             certiType={form.certiType}
             onCertiTypeChange={(v) => handleFieldChange('certiType', v)}
             regulationOptions={regulationOptions}
@@ -373,6 +418,28 @@ export default function StdTestItemEditModal({ isOpen, item, onClose, onSaved }:
             testMethod={form.testMethod}
             ss={form.ss}
           />
+
+          {/* Sections 4+ */}
+          {EDIT_GROUPS.slice(1).map((group) => {
+            const locked =
+              group.requiresProductLine !== undefined &&
+              form.productLine !== group.requiresProductLine;
+            return (
+              <EditSection
+                key={group.title}
+                group={group}
+                form={form}
+                onChange={handleFieldChange}
+                disabled={saving || locked}
+                lockedNote={
+                  locked
+                    ? `${group.requiresProductLine} 제품군 전용 — PRODUCT_LINE이 ${group.requiresProductLine}일 때만 활성화 (현재: ${form.productLine || '미지정'})`
+                    : undefined
+                }
+                optionsByColumn={optionsByColumn}
+              />
+            );
+          })}
 
           <ReadonlyAudit item={item} />
         </div>
@@ -505,15 +572,24 @@ function TestItemDefinitionSection({
     };
   }, [form.testItemName, form.testMethod]);
 
+  // Changing the representative (item/method/condition) invalidates any pattern
+  // built on the old base, so CDN_PATTERN is cleared alongside.
   const handleItemChange = (value: string) => {
     onChange('testItemName', value);
     onChange('testMethod', '');
     onChange('testCondition', '');
+    onChange('cdnPattern', '');
   };
 
   const handleMethodChange = (value: string) => {
     onChange('testMethod', value);
     onChange('testCondition', '');
+    onChange('cdnPattern', '');
+  };
+
+  const handleConditionChange = (value: string) => {
+    onChange('testCondition', value);
+    onChange('cdnPattern', '');
   };
 
   return (
@@ -577,7 +653,7 @@ function TestItemDefinitionSection({
             <SearchCombobox
               id="edit-combo-condition"
               value={form.testCondition}
-              onChange={(v) => onChange('testCondition', v)}
+              onChange={handleConditionChange}
               options={conditions}
               placeholder={
                 form.testItemName && form.testMethod ? '시험 조건 선택' : '방법을 먼저 선택'
@@ -590,6 +666,20 @@ function TestItemDefinitionSection({
           </ComboField>
         </div>
 
+        {/* CDN_PATTERN — 대표 조건명의 확장 패턴 (%→{SS} #→{RADIAL_BIAS} @→{POR}) */}
+        <div className="md:col-span-2 xl:col-span-4 min-w-0">
+          <ComboField column="CDN_PATTERN" label="조건명 확장 패턴 (선택)">
+            <CdnPatternBuilder
+              base={form.testCondition}
+              value={form.cdnPattern}
+              onChange={(v) => onChange('cdnPattern', v)}
+              disabled={disabled}
+              ss={form.ss}
+              radialBias={form.radialBias}
+              por={form.por}
+            />
+          </ComboField>
+        </div>
       </div>
     </section>
   );
@@ -623,19 +713,33 @@ function EditSection({
   onChange,
   disabled,
   optionsByColumn,
+  lockedNote,
 }: {
   group: EditGroup;
   form: FormState;
   onChange: (key: keyof FormState, value: string) => void;
   disabled: boolean;
   optionsByColumn: Record<string, string[]>;
+  lockedNote?: string;
 }) {
   return (
-    <section className="bg-card border border-border rounded-xl shadow-xs overflow-hidden">
+    <section
+      className={`bg-card border rounded-xl shadow-xs overflow-hidden transition-opacity ${
+        lockedNote ? 'border-border/60 opacity-60' : 'border-border'
+      }`}
+    >
       <div className="px-5 py-3 border-b border-border">
-        <h3 className="text-xs font-extrabold text-primary uppercase tracking-widest">
-          {group.title}
-        </h3>
+        <div className="flex items-center justify-between gap-2">
+          <h3 className="text-xs font-extrabold text-primary uppercase tracking-widest">
+            {group.title}
+          </h3>
+          {lockedNote && (
+            <span className="inline-flex items-center gap-1 text-2xs font-bold text-warning shrink-0">
+              <Lock className="h-3 w-3" />
+              {lockedNote}
+            </span>
+          )}
+        </div>
         <p className="text-2xs text-secondary mt-1">{group.description}</p>
       </div>
       <div className="p-5 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
@@ -686,7 +790,24 @@ function EditField({
       );
       break;
     case 'flag':
-      control = <FlagToggle id={fieldId} value={value} onChange={onChange} disabled={disabled} />;
+      control =
+        field.flagOn !== undefined ? (
+          <MappedFlagToggle
+            id={fieldId}
+            value={value}
+            onChange={onChange}
+            onValue={field.flagOn}
+            offValue={field.flagOff ?? ''}
+            disabled={disabled}
+          />
+        ) : (
+          <FlagToggle id={fieldId} value={value} onChange={onChange} disabled={disabled} />
+        );
+      break;
+    case 'range':
+      control = (
+        <RangeInput id={fieldId} value={value} onChange={onChange} disabled={disabled} unit={field.unit} />
+      );
       break;
     case 'multi':
       control = (
@@ -695,6 +816,8 @@ function EditField({
           value={value}
           onChange={onChange}
           options={options}
+          separator={field.separator}
+          defaultHighlight={field.defaultHighlight}
           placeholder="선택..."
           disabled={disabled}
         />
@@ -714,7 +837,10 @@ function EditField({
   }
 
   return (
-    <div className={`space-y-1.5 min-w-0 ${field.wide ? 'md:col-span-2' : ''}`}>
+    <div
+      className={`space-y-1.5 min-w-0 ${field.full ? 'md:col-span-2 xl:col-span-4' : field.wide ? 'md:col-span-2' : ''
+        }`}
+    >
       <div className="flex items-center justify-between gap-2">
         <label htmlFor={fieldId} className="text-2xs font-bold text-secondary uppercase tracking-wider">
           {field.column}
@@ -733,8 +859,8 @@ function MarketEditSection({
   endurSvrty,
   onEndurSvrtyChange,
   endurSvrtyOptions,
-  certiTtm,
-  onCertiTtmChange,
+  certiTestYn,
+  onCertiTestYnChange,
   certiType,
   onCertiTypeChange,
   regulationOptions,
@@ -748,8 +874,8 @@ function MarketEditSection({
   endurSvrty: string;
   onEndurSvrtyChange: (value: string) => void;
   endurSvrtyOptions: string[];
-  certiTtm: string;
-  onCertiTtmChange: (value: string) => void;
+  certiTestYn: string;
+  onCertiTestYnChange: (value: string) => void;
   certiType: string;
   onCertiTypeChange: (value: string) => void;
   regulationOptions: string[];
@@ -759,6 +885,8 @@ function MarketEditSection({
 }) {
   const [suggestion, setSuggestion] = useState<SvrtySuggestResult | null>(null);
   const [suggestLoading, setSuggestLoading] = useState(false);
+  const [certiSuggestion, setCertiSuggestion] = useState<CertiTypeSuggestResult | null>(null);
+  const [certiLoading, setCertiLoading] = useState(false);
 
   const marketsStr = ALL_MARKETS.filter((m) => selectedMarkets.has(m)).join(',');
 
@@ -792,6 +920,47 @@ function MarketEditSection({
     };
   }, [productLine, marketsStr, testMethod, ss]);
 
+  // CERTI_TYPE 제안 — 선택 시장에 매핑된 법규 코드
+  useEffect(() => {
+    let ignore = false;
+    const load = async () => {
+      if (!marketsStr) {
+        setCertiSuggestion(null);
+        return;
+      }
+      setCertiLoading(true);
+      try {
+        const result = await suggestCertiType(marketsStr);
+        if (!ignore) setCertiSuggestion(result);
+      } catch {
+        if (!ignore) setCertiSuggestion(null);
+      } finally {
+        if (!ignore) setCertiLoading(false);
+      }
+    };
+    const timer = setTimeout(() => void load(), 300);
+    return () => {
+      ignore = true;
+      clearTimeout(timer);
+    };
+  }, [marketsStr]);
+
+  const certiSet = new Set(
+    certiType
+      .split(/,\s*/)
+      .map((c) => c.trim())
+      .filter(Boolean),
+  );
+  const certiMissing = certiSuggestion?.suggested.filter((c) => !certiSet.has(c)) ?? [];
+  const addCertiCode = (code: string) => {
+    if (certiSet.has(code)) return;
+    onCertiTypeChange([...certiSet, code].join(','));
+  };
+  const applyCertiSuggestion = () => {
+    if (certiMissing.length === 0) return;
+    onCertiTypeChange([...certiSet, ...certiMissing].join(','));
+  };
+
   const reasonText: Record<string, string> = {
     UNSUPPORTED_METHOD: '지원되지 않는 시험 방법 — 고속내구(High Speed)/일반내구(Load Up)만 제안 가능',
     NO_APPLICABLE_REGULATION: '선택한 시장에 적용 가능한 법규 순위가 없습니다',
@@ -802,7 +971,7 @@ function MarketEditSection({
     <section className="bg-card border border-border rounded-xl shadow-xs overflow-hidden">
       <div className="px-5 py-3 border-b border-border">
         <h3 className="text-xs font-extrabold text-primary uppercase tracking-widest">
-          7. 시장 적용 정보
+          3. 시장 적용 정보
         </h3>
         <p className="text-2xs text-secondary mt-1">
           38개 마켓 플래그 컬럼을 클릭하여 적용 여부를 토글합니다. 현재 {selectedMarkets.size}개
@@ -815,14 +984,14 @@ function MarketEditSection({
         <div className="min-w-0">
           <div className="flex items-center justify-between gap-2 mb-1.5">
             <label className="text-2xs font-bold text-secondary uppercase tracking-wider">
-              CERTI_TTM
+              CERTI_TEST_YN
             </label>
-            <span className="text-2xs text-muted-foreground/70 truncate">인증 여부 (Y/N)</span>
+            <span className="text-2xs text-muted-foreground/70 truncate">인증 시험 여부 (Y/N)</span>
           </div>
           <FlagToggle
-            id="edit-flag-certi-ttm"
-            value={certiTtm}
-            onChange={onCertiTtmChange}
+            id="edit-flag-certi-test-yn"
+            value={certiTestYn}
+            onChange={onCertiTestYnChange}
             disabled={disabled}
           />
         </div>
@@ -863,6 +1032,69 @@ function MarketEditSection({
         </div>
       </div>
 
+      {/* 인증유형 자동 제안 — 선택 시장에 매핑된 법규 코드, 적용은 수동 */}
+      <div className="px-5 py-2.5 border-b border-border bg-muted/30 flex items-center gap-2.5 flex-wrap min-h-11">
+        {certiLoading ? (
+          <span className="flex items-center gap-1.5 text-2xs font-bold text-muted-foreground">
+            <Spinner className="h-3 w-3" />
+            인증유형 제안 계산 중...
+          </span>
+        ) : certiSuggestion && certiSuggestion.suggested.length > 0 ? (
+          <>
+            <span className="inline-flex items-center gap-1.5 text-2xs font-bold text-secondary">
+              <Wand2 className="h-3 w-3" />
+              CERTI_TYPE 제안:
+            </span>
+            {certiSuggestion.suggested.map((code) => {
+              const has = certiSet.has(code);
+              return (
+                <button
+                  key={code}
+                  type="button"
+                  disabled={disabled || has}
+                  onClick={() => addCertiCode(code)}
+                  title={has ? '이미 반영됨' : '클릭하여 추가'}
+                  className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-2xs font-mono font-bold border transition-colors ${has
+                    ? 'bg-success-container text-success border-success/20 cursor-default'
+                    : 'bg-card text-info border-info/40 hover:bg-info hover:text-white cursor-pointer disabled:opacity-60'
+                    }`}
+                >
+                  {has && <Check className="h-3 w-3" />}
+                  {code}
+                </button>
+              );
+            })}
+            {certiMissing.length > 0 ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="xs"
+                disabled={disabled}
+                onClick={applyCertiSuggestion}
+                className="text-2xs font-bold h-6"
+              >
+                제안 적용 ({certiMissing.length})
+              </Button>
+            ) : (
+              <span className="inline-flex items-center gap-1 text-2xs font-bold text-success">
+                <Check className="h-3.5 w-3.5" />
+                제안 모두 반영됨
+              </span>
+            )}
+          </>
+        ) : (
+          <span className="text-2xs font-medium text-muted-foreground/70">
+            시장을 선택하면 법규 기반 인증유형이 제안됩니다
+          </span>
+        )}
+
+        {certiSuggestion && certiSuggestion.unmappedMarkets.length > 0 && (
+          <span className="text-2xs text-muted-foreground/70">
+            법규 매핑 없는 시장: {certiSuggestion.unmappedMarkets.join(', ')}
+          </span>
+        )}
+      </div>
+
       {/* 가혹도 자동 제안 — 시장·방법·SS 변경 시 갱신, 적용은 항상 수동 */}
       <div className="px-5 py-2.5 border-b border-border bg-muted/30 flex items-center gap-2.5 flex-wrap min-h-11">
         {suggestLoading ? (
@@ -874,7 +1106,7 @@ function MarketEditSection({
           <>
             <span className="inline-flex items-center gap-1.5 text-2xs font-bold bg-info-container text-info border border-info/20 rounded-md px-2 py-1">
               <Wand2 className="h-3 w-3" />
-              제안: {suggestion.suggested} — {suggestion.basis?.testCdnName} (
+              ENDUR_SVRTY 제안: {suggestion.suggested} — {suggestion.basis?.testCdnName} (
               {suggestion.basis?.regulationCode} · {suggestion.basis?.marketCode})
               {suggestion.speedGradeAssumed && ' · 속도등급 R이하 가정'}
             </span>
@@ -929,11 +1161,10 @@ function MarketEditSection({
                 disabled={disabled}
                 aria-pressed={on}
                 onClick={() => onToggle(code)}
-                className={`px-2 py-1 rounded-md text-2xs font-mono font-bold border transition-colors cursor-pointer disabled:opacity-60 ${
-                  on
-                    ? 'bg-info text-white border-info'
-                    : 'bg-card text-muted-foreground/60 border-border hover:border-info/50 hover:text-info'
-                }`}
+                className={`px-2 py-1 rounded-md text-2xs font-mono font-bold border transition-colors cursor-pointer disabled:opacity-60 ${on
+                  ? 'bg-info text-white border-info'
+                  : 'bg-card text-muted-foreground/60 border-border hover:border-info/50 hover:text-info'
+                  }`}
               >
                 {code}
               </button>

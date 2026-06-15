@@ -45,6 +45,21 @@ export class EndurSvrtyController {
     return this.service.suggest(productLine, markets ?? '', testMethod, ss);
   }
 
+  @Get('suggest-certi-type')
+  @ApiOperation({
+    summary: '시장 기반 인증유형(CERTI_TYPE) 제안',
+    description:
+      '선택 시장에 매핑된 법규 코드(DW_REGULATION_MARKET_MAP)를 인증유형으로 제안. 매핑 없는 시장은 별도 표기.',
+  })
+  @ApiQuery({
+    name: 'markets',
+    required: true,
+    description: '콤마 구분 마켓 코드 (예: E1,NA)',
+  })
+  suggestCertiType(@Query('markets') markets?: string) {
+    return this.service.suggestCertiType(markets ?? '');
+  }
+
   @Get('regulations')
   @ApiOperation({
     summary: '규제 코드 목록 (CERTI_TYPE 콤보 소스)',

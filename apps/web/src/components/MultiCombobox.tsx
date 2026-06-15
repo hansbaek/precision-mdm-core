@@ -27,6 +27,8 @@ interface MultiComboboxProps {
   placeholder?: string;
   disabled?: boolean;
   id?: string;
+  /** Option highlighted (focused) by default when the list opens — selection unchanged until clicked. */
+  defaultHighlight?: string;
 }
 
 /**
@@ -42,6 +44,7 @@ export default function MultiCombobox({
   placeholder = '선택...',
   disabled = false,
   id,
+  defaultHighlight,
 }: MultiComboboxProps) {
   const [open, setOpen] = useState(false);
 
@@ -121,7 +124,7 @@ export default function MultiCombobox({
         </button>
       </PopoverTrigger>
       <PopoverContent align="start" className="w-[var(--radix-popover-trigger-width)] min-w-56 p-0">
-        <Command>
+        <Command defaultValue={defaultHighlight}>
           <CommandInput placeholder="검색..." />
           <CommandList className="max-h-56">
             <CommandEmpty>검색 결과가 없습니다.</CommandEmpty>

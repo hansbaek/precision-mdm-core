@@ -92,8 +92,32 @@ function CommandList({
   className,
   ...props
 }: React.ComponentProps<typeof CommandPrimitive.List>) {
+  const ref = React.useRef<HTMLDivElement>(null)
+
+  // When rendered inside a Radix Dialog, react-remove-scroll blocks native
+  // wheel scrolling on the portaled popover. Drive scrollTop manually so the
+  // list responds to the wheel. React's onWheel is passive (preventDefault is
+  // ignored), so attach a non-passive native listener.
+  React.useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const onWheel = (e: WheelEvent) => {
+      const { scrollTop, scrollHeight, clientHeight } = el
+      if (scrollHeight <= clientHeight) return
+      e.preventDefault()
+      e.stopPropagation()
+      el.scrollTop = Math.max(
+        0,
+        Math.min(scrollHeight - clientHeight, scrollTop + e.deltaY)
+      )
+    }
+    el.addEventListener("wheel", onWheel, { passive: false })
+    return () => el.removeEventListener("wheel", onWheel)
+  }, [])
+
   return (
     <CommandPrimitive.List
+      ref={ref}
       data-slot="command-list"
       className={cn(
         "no-scrollbar max-h-72 scroll-py-1 overflow-x-hidden overflow-y-auto outline-none",

@@ -6,8 +6,9 @@ export class UpdateStdTestItemDto {
   @ApiPropertyOptional() @IsString() @IsOptional() testItemName?: string;
   @ApiPropertyOptional() @IsString() @IsOptional() testMethod?: string;
   @ApiPropertyOptional() @IsString() @IsOptional() testCondition?: string;
+  @ApiPropertyOptional() @IsString() @IsOptional() cdnPattern?: string;
   @ApiPropertyOptional() @IsString() @IsOptional() endurSvrty?: string;
-  @ApiPropertyOptional() @IsString() @IsOptional() certiTtm?: string;
+  @ApiPropertyOptional() @IsString() @IsOptional() certiTestYn?: string;
   @ApiPropertyOptional() @IsString() @IsOptional() certiType?: string;
   @ApiPropertyOptional() @IsString() @IsOptional() tempTire?: string;
   @ApiPropertyOptional() @IsString() @IsOptional() snowMark?: string;
