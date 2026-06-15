@@ -3,7 +3,10 @@ import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
 import * as ExcelJS from 'exceljs';
 import { UpdateStdTestItemDto } from './dto/update-std-test-item.dto';
+import { CreateStdTestItemDto } from './dto/create-std-test-item.dto';
 import { MARKET_COLS, TABLE_NAME } from './template.constants';
+
+const PK_SEQUENCE = 'SEQ_TEMPLATE_STD_TEST_ITEM';
 
 type RawRow = Record<string, unknown>;
 
@@ -214,6 +217,79 @@ export class TemplateService {
     }
 
     return this.findOneStdTestItem(id);
+  }
+
+  async createStdTestItem(dto: CreateStdTestItemDto) {
+    // New PK from the table sequence (next value is ahead of MAX(TMPLT_ID)).
+    const seqRows: { ID: number }[] = await this.dataSource.query(
+      `SELECT ${PK_SEQUENCE}.NEXTVAL AS ID FROM DUAL`,
+    );
+    const newId = Number(seqRows[0].ID);
+
+    const now = new Date();
+    const createdAt =
+      `${now.getFullYear()}` +
+      `${now.getMonth() + 1}`.padStart(2, '0') +
+      `${now.getDate()}`.padStart(2, '0');
+    const createdBy = dto.createdBy?.trim() || 'SYSTEM';
+
+    const isTbr = (dto.productLine ?? '').toUpperCase() === 'TBR';
+
+    // Same column set as update; TBR columns null unless PRODUCT_LINE is TBR.
+    const textMap: Record<string, string | null | undefined> = {
+      PRODUCT_LINE: dto.productLine,
+      TEST_ITEM_NAME: dto.testItemName,
+      TEST_MTH_NAME: dto.testMethod,
+      TEST_CDN_NAME: dto.testCondition,
+      CDN_PATTERN: dto.cdnPattern,
+      ENDUR_SVRTY: dto.endurSvrty,
+      CERTI_TEST_YN: dto.certiTestYn,
+      CERTI_TYPE: dto.certiType,
+      TEMP_TIRE: dto.tempTire,
+      SNOW_MARK: dto.snowMark,
+      FRT: dto.frt,
+      UTQG: dto.utqg,
+      POR: dto.por,
+      RADIAL_BIAS: dto.radialBias,
+      RIM_INCH: dto.rimInch,
+      GRV_DEPTH: dto.grvDepth,
+      SS: dto.ss,
+      LI: dto.li,
+      PLY_RATING: dto.plyRating,
+      TL_INDICATOR: dto.tlIndicator,
+      TBR_POSITION: isTbr ? dto.tbrPosition : null,
+      TBR_GRV_3: isTbr ? dto.tbrGrv3 : null,
+      TBR_SEGMENT: isTbr ? dto.tbrSegment : null,
+      TBR_ITEM_CNT_PER_BARCODE: isTbr ? dto.tbrItemCntPerBarcode : null,
+      NEW_SIZE_YN: dto.newSizeYn,
+      SIZE_SMPL: dto.sizeSmpl,
+    };
+
+    const cols = ['TMPLT_ID', 'CREATED_AT', 'CREATED_BY'];
+    const values: unknown[] = [newId, createdAt, createdBy];
+    for (const [col, val] of Object.entries(textMap)) {
+      cols.push(col);
+      values.push(val === undefined ? null : val);
+    }
+
+    const active = new Set(
+      (dto.markets ?? '')
+        .split(',')
+        .map((s) => s.trim().toUpperCase())
+        .filter(Boolean),
+    );
+    for (const col of MARKET_COLS) {
+      cols.push(col);
+      values.push(active.has(col) ? 1 : null);
+    }
+
+    const placeholders = cols.map((_, i) => `:${i + 1}`).join(', ');
+    await this.dataSource.query(
+      `INSERT INTO ${TABLE_NAME} (${cols.join(', ')}) VALUES (${placeholders})`,
+      values,
+    );
+
+    return this.findOneStdTestItem(newId);
   }
 
   async getStats() {

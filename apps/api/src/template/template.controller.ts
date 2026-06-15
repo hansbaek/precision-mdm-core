@@ -24,6 +24,7 @@ import type { Response } from 'express';
 import { TemplateService } from './template.service';
 import { TemplateUploadService } from './template-upload.service';
 import { UpdateStdTestItemDto } from './dto/update-std-test-item.dto';
+import { CreateStdTestItemDto } from './dto/create-std-test-item.dto';
 
 const UPLOAD_MAX_BYTES = 10 * 1024 * 1024;
 
@@ -74,6 +75,16 @@ export class TemplateController {
   @ApiOperation({ summary: 'TEMPLATE_STD_TEST_ITEM 단건 조회' })
   findOne(@Param('id', ParseIntPipe) id: number) {
     return this.service.findOneStdTestItem(id);
+  }
+
+  @Post('std-test-items')
+  @ApiOperation({
+    summary: 'TEMPLATE_STD_TEST_ITEM 신규 생성',
+    description:
+      'TMPLT_ID는 시퀀스로 자동 부여, CREATED_AT은 서버 일자. PRODUCT_LINE·TEST_ITEM_NAME 필수.',
+  })
+  create(@Body() dto: CreateStdTestItemDto) {
+    return this.service.createStdTestItem(dto);
   }
 
   @Patch('std-test-items/:id')

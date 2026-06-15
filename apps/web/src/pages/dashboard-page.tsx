@@ -1,5 +1,5 @@
 import { useState, type Dispatch, type SetStateAction } from 'react';
-import { AlertCircle, Download, Settings, Upload } from 'lucide-react';
+import { AlertCircle, Download, Plus, Settings, Upload } from 'lucide-react';
 import { downloadTemplateXlsx } from '@/api/template';
 import FilterPanel from '@/components/FilterPanel';
 import StdTestItemTable from '@/components/StdTestItemTable';
@@ -23,6 +23,7 @@ interface DashboardPageProps {
   onRetry: () => void;
   onView: (item: StdTestItem) => void;
   onEdit: (item: StdTestItem) => void;
+  onAdd: () => void;
   sortBy: string;
   setSortBy: (field: string) => void;
   sortOrder: SortOrder;
@@ -48,6 +49,7 @@ interface StdItemsSectionProps {
   onRetry: () => void;
   onView: (item: StdTestItem) => void;
   onEdit: (item: StdTestItem) => void;
+  onAdd: () => void;
   sortBy: string;
   setSortBy: (field: string) => void;
   sortOrder: SortOrder;
@@ -104,6 +106,7 @@ function StdItemsSection({
   onRetry,
   onView,
   onEdit,
+  onAdd,
   sortBy,
   setSortBy,
   sortOrder,
@@ -137,6 +140,14 @@ function StdItemsSection({
 
       {showToolbar && (
         <div className="flex items-center justify-end gap-2">
+          <Button
+            id="btn-toolbar-add"
+            onClick={onAdd}
+            className="text-xs font-bold bg-accent hover:bg-accent-hover text-white mr-auto"
+          >
+            <Plus className="h-4 w-4" />
+            신규 항목 추가
+          </Button>
           <Button
             id="btn-toolbar-download"
             variant="outline"

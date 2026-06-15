@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { AlertTriangle, Check, Lock, Save, Wand2 } from 'lucide-react';
+import { AlertTriangle, Check, Lock, Plus, Save, Wand2 } from 'lucide-react';
 
 import FlagToggle from '@/components/FlagToggle';
 import MappedFlagToggle from '@/components/MappedFlagToggle';
@@ -33,7 +33,7 @@ import {
 import { useStdCodes } from '../hooks/use-std-codes';
 import type { StdTestItem } from '../types';
 import { ALL_MARKETS } from '../types';
-import { updateStdTestItem } from '../api/template';
+import { createStdTestItem, updateStdTestItem } from '../api/template';
 
 type FormState = {
   productLine: string;
@@ -240,15 +240,31 @@ const EDIT_GROUPS: EditGroup[] = [
 
 interface Props {
   isOpen: boolean;
+  /** Existing record (edit mode); null when creating. */
   item: StdTestItem | null;
+  /** 'edit' (default) updates `item`; 'create' inserts a new record. */
+  mode?: 'create' | 'edit';
   onClose: () => void;
-  onSaved: (updated: StdTestItem) => void;
+  /** Create-and-close, or edit save. Parent closes the modal. */
+  onSaved: (saved: StdTestItem) => void;
+  /** Create-and-continue: parent adds to the list but keeps the modal open. */
+  onCreatedContinue?: (saved: StdTestItem) => void;
 }
 
-export default function StdTestItemEditModal({ isOpen, item, onClose, onSaved }: Props) {
+export default function StdTestItemEditModal({
+  isOpen,
+  item,
+  mode = 'edit',
+  onClose,
+  onSaved,
+  onCreatedContinue,
+}: Props) {
+  const isCreate = mode === 'create';
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [selectedMarkets, setSelectedMarkets] = useState<Set<string>>(new Set());
   const [saving, setSaving] = useState(false);
+  // Inline confirmation for the just-created record (create-and-continue flow).
+  const [lastCreatedId, setLastCreatedId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   // Regulation codes back the CERTI_TYPE multi-combo (DW_REGULATION_MARKET_MAP)
   const [regulationOptions, setRegulationOptions] = useState<string[]>([]);
@@ -292,6 +308,14 @@ export default function StdTestItemEditModal({ isOpen, item, onClose, onSaved }:
   };
 
   useEffect(() => {
+    if (!isOpen) return;
+    if (isCreate) {
+      setForm(EMPTY_FORM);
+      setSelectedMarkets(new Set());
+      setError(null);
+      setLastCreatedId(null);
+      return;
+    }
     if (item) {
       setForm({
         productLine: item.productLine,
@@ -324,9 +348,9 @@ export default function StdTestItemEditModal({ isOpen, item, onClose, onSaved }:
       setSelectedMarkets(new Set(item.markets));
       setError(null);
     }
-  }, [item]);
+  }, [item, isOpen, isCreate]);
 
-  if (!item) return null;
+  if (!isCreate && !item) return null;
 
   const toggleMarket = (code: string) => {
     setSelectedMarkets((prev) => {
@@ -344,17 +368,37 @@ export default function StdTestItemEditModal({ isOpen, item, onClose, onSaved }:
     setForm((current) => ({ ...current, [key]: value }));
   };
 
-  const handleSave = async () => {
+  const handleSave = async (keepOpen = false) => {
     setSaving(true);
     setError(null);
     try {
       const marketsStr = ALL_MARKETS.filter((market) => selectedMarkets.has(market)).join(',');
-      const updated = await updateStdTestItem(item.id, { ...form, markets: marketsStr });
-      // Closing (and where to return) is the parent's job — onClose here would
-      // route the success path through the cancel handler.
+      const payload = { ...form, markets: marketsStr };
+
+      if (isCreate || !item) {
+        const created = await createStdTestItem(payload);
+        if (keepOpen) {
+          // Create-and-continue: keep PRODUCT_LINE (consecutive items usually
+          // share it), reset the rest, and surface an inline confirmation.
+          onCreatedContinue?.(created);
+          setForm({ ...EMPTY_FORM, productLine: form.productLine });
+          setSelectedMarkets(new Set());
+          setLastCreatedId(created.id);
+        } else {
+          onSaved(created);
+        }
+        return;
+      }
+
+      // Edit save — parent closes and routes back.
+      const updated = await updateStdTestItem(item.id, payload);
       onSaved(updated);
     } catch {
-      setError('저장 중 오류가 발생했습니다. 다시 시도해주세요.');
+      setError(
+        isCreate
+          ? '생성 중 오류가 발생했습니다. 필수 항목(제품 라인·시험 항목명)을 확인하세요.'
+          : '저장 중 오류가 발생했습니다. 다시 시도해주세요.',
+      );
     } finally {
       setSaving(false);
     }
@@ -371,14 +415,22 @@ export default function StdTestItemEditModal({ isOpen, item, onClose, onSaved }:
       <DialogContent className="max-w-6xl sm:max-w-6xl p-0 gap-0 max-h-[92vh] flex flex-col overflow-hidden">
         <DialogHeader className="px-6 py-4 border-b border-border bg-primary/5 gap-0.5 shrink-0">
           <DialogDescription className="text-2xs text-secondary font-mono uppercase tracking-widest">
-            수정 / Edit · TEMPLATE_STD_TEST_ITEM
+            {isCreate ? '신규 / Create' : '수정 / Edit'} · TEMPLATE_STD_TEST_ITEM
           </DialogDescription>
           <DialogTitle className="text-base font-extrabold text-primary font-hanken">
-            STD Test Item #{item.id} · {item.productLine || '–'} · {item.testItemName || '–'}
+            {isCreate
+              ? `STD Test Item · 신규 추가 · ${form.productLine || '–'} · ${form.testItemName || '–'}`
+              : `STD Test Item #${item?.id} · ${item?.productLine || '–'} · ${item?.testItemName || '–'}`}
           </DialogTitle>
         </DialogHeader>
 
         <div className="overflow-y-auto p-6 space-y-5 flex-1 bg-background">
+          {isCreate && lastCreatedId !== null && (
+            <div className="bg-success-container border border-success/30 text-success text-xs font-bold px-4 py-2.5 rounded-lg flex items-center gap-2">
+              <Check className="h-4 w-4 shrink-0" />
+              STD Item #{lastCreatedId} 생성 완료 — 이어서 입력하세요. (PRODUCT_LINE은 유지됩니다)
+            </div>
+          )}
           {error && (
             <div className="bg-destructive/10 border border-destructive/30 text-destructive text-xs font-bold px-4 py-2.5 rounded-lg">
               {error}
@@ -446,20 +498,34 @@ export default function StdTestItemEditModal({ isOpen, item, onClose, onSaved }:
 
         <DialogFooter className="px-6 py-4 mx-0 mb-0 border-t border-border sm:justify-between gap-2 bg-muted/50 shrink-0 rounded-b-xl">
           <p className="text-2xs text-muted-foreground font-mono self-center">
-            읽기 전용: TMPLT_ID, CREATED_AT, CREATED_BY · 시장 컬럼은 토글 후 저장됩니다.
+            {isCreate
+              ? 'TMPLT_ID·CREATED_AT 자동 생성 · PRODUCT_LINE·TEST_ITEM_NAME 필수'
+              : '읽기 전용: TMPLT_ID, CREATED_AT, CREATED_BY · 시장 컬럼은 토글 후 저장됩니다.'}
           </p>
           <div className="flex justify-end gap-2">
             <Button variant="outline" size="sm" onClick={onClose} disabled={saving} className="text-xs font-bold">
               취소
             </Button>
+            {isCreate && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleSave(true)}
+                disabled={saving || !form.productLine || !form.testItemName}
+                className="text-xs font-bold"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                추가 후 계속
+              </Button>
+            )}
             <Button
               size="sm"
-              onClick={handleSave}
-              disabled={saving}
+              onClick={() => handleSave(false)}
+              disabled={saving || (isCreate && (!form.productLine || !form.testItemName))}
               className="text-xs font-bold bg-accent hover:bg-accent-hover text-white px-5"
             >
               {saving ? <Spinner className="h-3.5 w-3.5" /> : <Save className="h-3.5 w-3.5" />}
-              {saving ? '저장 중...' : '저장 (Save)'}
+              {saving ? (isCreate ? '생성 중...' : '저장 중...') : isCreate ? '추가 (Create)' : '저장 (Save)'}
             </Button>
           </div>
         </DialogFooter>
@@ -1176,19 +1242,26 @@ function MarketEditSection({
   );
 }
 
-function ReadonlyAudit({ item }: { item: StdTestItem }) {
+function ReadonlyAudit({ item }: { item: StdTestItem | null }) {
+  const auto = '저장 시 자동 생성';
   return (
     <section className="bg-card border border-border rounded-xl shadow-xs overflow-hidden">
       <div className="px-5 py-3 border-b border-border">
         <h3 className="text-xs font-extrabold text-primary uppercase tracking-widest">
           8. 등록 정보
         </h3>
-        <p className="text-2xs text-secondary mt-1">생성 이력 정보는 읽기 전용입니다.</p>
+        <p className="text-2xs text-secondary mt-1">
+          {item ? '생성 이력 정보는 읽기 전용입니다.' : 'TMPLT_ID·생성일은 저장 시 서버에서 부여됩니다.'}
+        </p>
       </div>
       <div className="p-5 grid grid-cols-1 md:grid-cols-3 gap-4">
-        <ReadonlyField column="TMPLT_ID" label="템플릿 ID (PK)" value={String(item.id)} />
-        <ReadonlyField column="CREATED_AT" label="생성일 (YYYYMMDD)" value={formatDate(item.createdAt)} />
-        <ReadonlyField column="CREATED_BY" label="생성자 사번" value={item.createdBy || '–'} />
+        <ReadonlyField column="TMPLT_ID" label="템플릿 ID (PK)" value={item ? String(item.id) : auto} />
+        <ReadonlyField
+          column="CREATED_AT"
+          label="생성일 (YYYYMMDD)"
+          value={item ? formatDate(item.createdAt) : auto}
+        />
+        <ReadonlyField column="CREATED_BY" label="생성자 사번" value={item ? item.createdBy || '–' : 'SYSTEM'} />
       </div>
     </section>
   );

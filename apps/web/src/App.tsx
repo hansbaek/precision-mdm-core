@@ -39,6 +39,7 @@ export default function App() {
   const [stdItemsPerPage, setStdItemsPerPage] = useState(20);
   const [viewingStdItem, setViewingStdItem] = useState<StdTestItem | null>(null);
   const [editingStdItem, setEditingStdItem] = useState<StdTestItem | null>(null);
+  const [creatingStdItem, setCreatingStdItem] = useState(false);
   // Where the edit modal was opened from — cancel/save return the user there.
   const [editOrigin, setEditOrigin] = useState<'table' | 'detail'>('table');
 
@@ -84,6 +85,24 @@ export default function App() {
   const handleEditFromTable = (item: StdTestItem) => {
     setEditOrigin('table');
     setEditingStdItem(item);
+  };
+
+  // "추가" — create and close. Surface the new row at the top of the list and
+  // offer a one-click view so the user can confirm what was saved.
+  const handleStdItemCreated = (created: StdTestItem) => {
+    setStdItems((prev) => [created, ...prev]);
+    setCreatingStdItem(false);
+    setStdSortBy('id');
+    setStdSortOrder('desc');
+    setStdCurrentPage(1);
+    toast.success(`STD Item #${created.id} 생성 완료`, {
+      action: { label: '보기', onClick: () => setViewingStdItem(created) },
+    });
+  };
+
+  // "추가 후 계속" — create but keep the modal open for the next entry.
+  const handleStdItemCreatedContinue = (created: StdTestItem) => {
+    setStdItems((prev) => [created, ...prev]);
   };
 
   const handleEditCancel = () => {
@@ -152,6 +171,7 @@ export default function App() {
                   onRetry={reloadStdItems}
                   onView={setViewingStdItem}
                   onEdit={handleEditFromTable}
+                  onAdd={() => setCreatingStdItem(true)}
                   sortBy={stdSortBy}
                   setSortBy={setStdSortBy}
                   sortOrder={stdSortOrder}
@@ -213,10 +233,12 @@ export default function App() {
       />
 
       <StdTestItemEditModal
-        isOpen={editingStdItem !== null}
-        item={editingStdItem}
-        onClose={handleEditCancel}
-        onSaved={handleStdItemSaved}
+        isOpen={editingStdItem !== null || creatingStdItem}
+        item={creatingStdItem ? null : editingStdItem}
+        mode={creatingStdItem ? 'create' : 'edit'}
+        onClose={creatingStdItem ? () => setCreatingStdItem(false) : handleEditCancel}
+        onSaved={creatingStdItem ? handleStdItemCreated : handleStdItemSaved}
+        onCreatedContinue={handleStdItemCreatedContinue}
       />
     </div>
   );

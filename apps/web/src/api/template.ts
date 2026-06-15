@@ -63,6 +63,15 @@ export type StdTestItemUpdate = Partial<{
 export const updateStdTestItem = (id: number, data: StdTestItemUpdate): Promise<StdTestItem> =>
   axiosInstance.patch(`/template/std-test-items/${id}`, data).then(res => res.data);
 
+/** Create — PRODUCT_LINE & TEST_ITEM_NAME required; TMPLT_ID/CREATED_AT server-assigned. */
+export type StdTestItemCreate = StdTestItemUpdate & {
+  productLine: string;
+  testItemName: string;
+};
+
+export const createStdTestItem = (data: StdTestItemCreate): Promise<StdTestItem> =>
+  axiosInstance.post('/template/std-test-items', data).then(res => res.data);
+
 export const getStdStats = (): Promise<StdStats> =>
   axiosInstance.get('/template/stats').then(res => res.data);
 
