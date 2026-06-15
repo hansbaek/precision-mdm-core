@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   ParseIntPipe,
@@ -94,6 +95,12 @@ export class TemplateController {
     @Body() dto: UpdateStdTestItemDto,
   ) {
     return this.service.updateStdTestItem(id, dto);
+  }
+
+  @Delete('std-test-items/:id')
+  @ApiOperation({ summary: 'TEMPLATE_STD_TEST_ITEM 삭제 (하드 삭제)' })
+  remove(@Param('id', ParseIntPipe) id: number) {
+    return this.service.deleteStdTestItem(id);
   }
 
   @Post('upload/preview')

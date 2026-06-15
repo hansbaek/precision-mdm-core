@@ -8,6 +8,7 @@ import {
   MoreVertical,
   Rows3,
   StretchHorizontal,
+  Trash2,
 } from 'lucide-react';
 
 import EmptyState from '@/components/EmptyState';
@@ -17,6 +18,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
@@ -42,6 +44,7 @@ interface Props {
   items: StdTestItem[];
   onView: (item: StdTestItem) => void;
   onEdit: (item: StdTestItem) => void;
+  onDelete: (item: StdTestItem) => void;
   sortBy: string;
   setSortBy: (f: string) => void;
   sortOrder: 'asc' | 'desc';
@@ -111,7 +114,7 @@ function SortTh({
 }
 
 export default function StdTestItemTable({
-  items, onView, onEdit,
+  items, onView, onEdit, onDelete,
   sortBy, setSortBy, sortOrder, setSortOrder,
   currentPage, setCurrentPage, itemsPerPage, setItemsPerPage,
   onResetFilters,
@@ -234,6 +237,15 @@ export default function StdTestItemTable({
                       <DropdownMenuItem onSelect={() => onEdit(item)} className="font-semibold text-xs">
                         <Edit />
                         수정 (Edit)
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        onSelect={() => onDelete(item)}
+                        variant="destructive"
+                        className="font-semibold text-xs"
+                      >
+                        <Trash2 />
+                        삭제 (Delete)
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>

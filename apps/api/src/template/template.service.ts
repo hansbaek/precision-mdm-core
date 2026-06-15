@@ -292,6 +292,15 @@ export class TemplateService {
     return this.findOneStdTestItem(newId);
   }
 
+  async deleteStdTestItem(id: number) {
+    await this.findOneStdTestItem(id); // 404 if missing
+    await this.dataSource.query(
+      `DELETE FROM ${TABLE_NAME} WHERE TMPLT_ID = :1`,
+      [id],
+    );
+    return { deleted: true, id };
+  }
+
   async getStats() {
     const rows = await this.findAllStdTestItems();
     const total = rows.length;

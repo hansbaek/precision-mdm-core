@@ -23,6 +23,7 @@ interface DashboardPageProps {
   onRetry: () => void;
   onView: (item: StdTestItem) => void;
   onEdit: (item: StdTestItem) => void;
+  onDelete: (item: StdTestItem) => void;
   onAdd: () => void;
   sortBy: string;
   setSortBy: (field: string) => void;
@@ -49,6 +50,7 @@ interface StdItemsSectionProps {
   onRetry: () => void;
   onView: (item: StdTestItem) => void;
   onEdit: (item: StdTestItem) => void;
+  onDelete: (item: StdTestItem) => void;
   onAdd: () => void;
   sortBy: string;
   setSortBy: (field: string) => void;
@@ -106,6 +108,7 @@ function StdItemsSection({
   onRetry,
   onView,
   onEdit,
+  onDelete,
   onAdd,
   sortBy,
   setSortBy,
@@ -184,6 +187,7 @@ function StdItemsSection({
             items={items}
             onView={onView}
             onEdit={onEdit}
+            onDelete={onDelete}
             sortBy={sortBy}
             setSortBy={setSortBy}
             sortOrder={sortOrder}

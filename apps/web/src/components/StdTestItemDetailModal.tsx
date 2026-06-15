@@ -1,3 +1,4 @@
+import { Trash2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -44,9 +45,10 @@ interface Props {
   item: StdTestItem | null;
   onClose: () => void;
   onEdit: (item: StdTestItem) => void;
+  onDelete: (item: StdTestItem) => void;
 }
 
-export default function StdTestItemDetailModal({ isOpen, item, onClose, onEdit }: Props) {
+export default function StdTestItemDetailModal({ isOpen, item, onClose, onEdit, onDelete }: Props) {
   if (!item) return null;
 
   const groups = buildDetailGroups(item);
@@ -73,9 +75,20 @@ export default function StdTestItemDetailModal({ isOpen, item, onClose, onEdit }
         </div>
 
         <DialogFooter className="px-6 py-4 mx-0 mb-0 border-t border-border sm:justify-between gap-2 bg-muted/50 shrink-0 rounded-b-xl">
-          <p className="text-2xs text-muted-foreground font-mono self-center">
-            전체 66개 컬럼 기준 그룹 표시 · 읽기 전용: TMPLT_ID, CREATED_AT, CREATED_BY
-          </p>
+          <div className="flex items-center gap-3">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onDelete(item)}
+              className="text-xs font-bold text-destructive hover:bg-destructive/10 hover:text-destructive"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              삭제
+            </Button>
+            <p className="hidden md:block text-2xs text-muted-foreground font-mono self-center">
+              읽기 전용: TMPLT_ID, CREATED_AT, CREATED_BY
+            </p>
+          </div>
           <div className="flex justify-end gap-2">
             <Button variant="outline" size="sm" onClick={onClose} className="text-xs font-bold">
               닫기

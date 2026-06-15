@@ -72,6 +72,10 @@ export type StdTestItemCreate = StdTestItemUpdate & {
 export const createStdTestItem = (data: StdTestItemCreate): Promise<StdTestItem> =>
   axiosInstance.post('/template/std-test-items', data).then(res => res.data);
 
+/** Hard delete — removes the row permanently. */
+export const deleteStdTestItem = (id: number): Promise<{ deleted: true; id: number }> =>
+  axiosInstance.delete(`/template/std-test-items/${id}`).then(res => res.data);
+
 export const getStdStats = (): Promise<StdStats> =>
   axiosInstance.get('/template/stats').then(res => res.data);
 

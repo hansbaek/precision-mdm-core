@@ -8,6 +8,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { toast } from 'sonner';
 
 import CommandPalette from './components/CommandPalette';
+import ConfirmDeleteDialog from './components/ConfirmDeleteDialog';
 import Header from './components/Header';
 import Sidebar from './components/Sidebar';
 import StdTestItemDetailModal from './components/StdTestItemDetailModal';
@@ -40,6 +41,7 @@ export default function App() {
   const [viewingStdItem, setViewingStdItem] = useState<StdTestItem | null>(null);
   const [editingStdItem, setEditingStdItem] = useState<StdTestItem | null>(null);
   const [creatingStdItem, setCreatingStdItem] = useState(false);
+  const [deletingStdItem, setDeletingStdItem] = useState<StdTestItem | null>(null);
   // Where the edit modal was opened from — cancel/save return the user there.
   const [editOrigin, setEditOrigin] = useState<'table' | 'detail'>('table');
 
@@ -103,6 +105,14 @@ export default function App() {
   // "추가 후 계속" — create but keep the modal open for the next entry.
   const handleStdItemCreatedContinue = (created: StdTestItem) => {
     setStdItems((prev) => [created, ...prev]);
+  };
+
+  const handleStdItemDeleted = (id: number) => {
+    setStdItems((prev) => prev.filter((it) => it.id !== id));
+    setDeletingStdItem(null);
+    // Close the detail view if it was showing the deleted record.
+    setViewingStdItem((cur) => (cur && cur.id === id ? null : cur));
+    toast.success(`STD Item #${id} 삭제 완료`);
   };
 
   const handleEditCancel = () => {
@@ -171,6 +181,7 @@ export default function App() {
                   onRetry={reloadStdItems}
                   onView={setViewingStdItem}
                   onEdit={handleEditFromTable}
+                  onDelete={setDeletingStdItem}
                   onAdd={() => setCreatingStdItem(true)}
                   sortBy={stdSortBy}
                   setSortBy={setStdSortBy}
@@ -230,6 +241,7 @@ export default function App() {
           setEditOrigin('detail');
           setEditingStdItem(item);
         }}
+        onDelete={setDeletingStdItem}
       />
 
       <StdTestItemEditModal
@@ -239,6 +251,12 @@ export default function App() {
         onClose={creatingStdItem ? () => setCreatingStdItem(false) : handleEditCancel}
         onSaved={creatingStdItem ? handleStdItemCreated : handleStdItemSaved}
         onCreatedContinue={handleStdItemCreatedContinue}
+      />
+
+      <ConfirmDeleteDialog
+        item={deletingStdItem}
+        onClose={() => setDeletingStdItem(null)}
+        onDeleted={handleStdItemDeleted}
       />
     </div>
   );
