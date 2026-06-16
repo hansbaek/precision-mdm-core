@@ -18,6 +18,7 @@ import { useStdTestItems } from './hooks/use-std-test-items';
 import AnalyticsPage from './pages/analytics-page';
 import DashboardPage from './pages/dashboard-page';
 import ReportsPage from './pages/reports-page';
+import TestMatchPage from './pages/test-match-page';
 import type { FilterOptions, StdTestItem } from './types';
 
 const INITIAL_FILTERS: FilterOptions = {
@@ -192,6 +193,8 @@ export default function App() {
                   itemsPerPage={stdItemsPerPage}
                   setItemsPerPage={setStdItemsPerPage}
                 />
+              ) : activeTab === 'test-match' ? (
+                <TestMatchPage />
               ) : activeTab === 'analytics' ? (
                 <AnalyticsPage
                   stats={stdStats}

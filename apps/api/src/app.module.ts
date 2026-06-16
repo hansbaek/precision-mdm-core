@@ -10,6 +10,7 @@ import { HealthModule } from './health/health.module';
 import { StdCodesModule } from './std-codes/std-codes.module';
 import { TemplateModule } from './template/template.module';
 import { TestClassificationModule } from './test-classification/test-classification.module';
+import { TestMatchModule } from './test-match/test-match.module';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { TestClassificationModule } from './test-classification/test-classificat
     StdCodesModule,
     TemplateModule,
     TestClassificationModule,
+    TestMatchModule,
   ],
   controllers: [AppController],
   providers: [AppService],

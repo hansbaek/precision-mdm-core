@@ -23,6 +23,7 @@ export default function Header({ activeTab, setActiveTab, onOpenPalette }: Heade
 
   const tabs = [
     { id: 'dashboard', label: 'Dashboard' },
+    { id: 'test-match', label: '필요시험조회' },
     { id: 'analytics', label: 'Analytics' },
     { id: 'reports', label: 'Reports' },
   ];

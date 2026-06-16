@@ -1,0 +1,245 @@
+import { useState } from 'react';
+import { AlertTriangle, Search, Beaker } from 'lucide-react';
+import axios from 'axios';
+
+import { Button } from '@/components/ui/button';
+import { Spinner } from '@/components/ui/spinner';
+import { matchTests, type MatchResult, type TireAttrs } from '@/api/test-match';
+
+export default function TestMatchPage() {
+  const [mcode, setMcode] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [result, setResult] = useState<MatchResult | null>(null);
+
+  const run = async () => {
+    const mc = mcode.trim();
+    if (!mc) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await matchTests(mc);
+      setResult(data);
+    } catch (e) {
+      setResult(null);
+      if (axios.isAxiosError(e) && e.response?.status === 404) {
+        setError(`mcode '${mc}' 정보를 찾을 수 없습니다. (활성/마켓 정보 확인)`);
+      } else {
+        setError('조회 중 오류가 발생했습니다. 다시 시도해주세요.');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* 검색 바 */}
+      <section className="bg-card border border-border rounded-xl shadow-xs overflow-hidden">
+        <div className="px-5 py-3 border-b border-border">
+          <h2 className="text-xs font-extrabold text-primary uppercase tracking-widest flex items-center gap-2">
+            <Beaker className="h-4 w-4 text-accent" />
+            필요 시험 조회 · mcode → 시험 매칭
+          </h2>
+          <p className="text-2xs text-secondary mt-1">
+            제품코드(mcode)의 속성(제품라인·대표마켓·치수·구조)을 도출해 TEMPLATE_STD_TEST_ITEM
+            조건과 대조, 수행해야 할 시험을 표시합니다.
+          </p>
+        </div>
+        <div className="p-5 flex items-center gap-3">
+          <div className="relative flex-1 max-w-md">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+            <input
+              type="text"
+              value={mcode}
+              onChange={(e) => setMcode(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && run()}
+              placeholder="mcode 입력 (예: 3003974)"
+              className="w-full border border-border rounded-lg pl-9 pr-3 py-2 text-xs font-mono focus:border-primary focus:ring-2 focus:ring-ring/30 outline-none text-foreground bg-card transition-all"
+            />
+          </div>
+          <Button
+            size="sm"
+            onClick={run}
+            disabled={loading || !mcode.trim()}
+            className="text-xs font-bold bg-accent hover:bg-accent-hover text-white px-5"
+          >
+            {loading ? <Spinner className="h-3.5 w-3.5" /> : <Search className="h-3.5 w-3.5" />}
+            {loading ? '조회 중...' : '조회'}
+          </Button>
+        </div>
+      </section>
+
+      {error && (
+        <div className="bg-destructive/10 border border-destructive/30 text-destructive text-xs font-bold px-4 py-3 rounded-lg flex items-center gap-2">
+          <AlertTriangle className="h-4 w-4 shrink-0" />
+          {error}
+        </div>
+      )}
+
+      {result && (
+        <>
+          <TireCard tire={result.tire} />
+          <MatchedTable result={result} />
+        </>
+      )}
+    </div>
+  );
+}
+
+function Field({ label, value, mono = true }: { label: string; value: React.ReactNode; mono?: boolean }) {
+  return (
+    <div className="space-y-1 min-w-0">
+      <label className="text-2xs font-bold text-secondary uppercase tracking-wider">{label}</label>
+      <p
+        className={`text-xs font-bold text-foreground bg-muted/50 border border-border rounded-lg px-3 py-2 truncate ${
+          mono ? 'font-mono' : ''
+        }`}
+      >
+        {value ?? '–'}
+      </p>
+    </div>
+  );
+}
+
+function TireCard({ tire }: { tire: TireAttrs }) {
+  return (
+    <section className="bg-card border border-border rounded-xl shadow-xs overflow-hidden">
+      <div className="px-5 py-3 border-b border-border flex items-center justify-between">
+        <h3 className="text-xs font-extrabold text-primary uppercase tracking-widest">
+          타이어 속성 · {tire.mcode}
+        </h3>
+        <span className="text-2xs font-mono font-bold bg-primary/10 text-primary px-2 py-1 rounded-md">
+          {tire.productLine || '–'}
+        </span>
+      </div>
+      <div className="p-5 space-y-4">
+        {/* 대표마켓 */}
+        <div>
+          <div className="flex items-center gap-2 mb-1.5">
+            <label className="text-2xs font-bold text-secondary uppercase tracking-wider">
+              대표 마켓
+            </label>
+            <span className="text-2xs text-muted-foreground/70 font-mono">
+              main_market={tire.mainMarket ?? '–'} · {tire.market.source}
+            </span>
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {tire.market.codes.length ? (
+              tire.market.codes.map((c) => (
+                <span
+                  key={c}
+                  className="px-2 py-1 rounded-md text-2xs font-mono font-bold bg-info text-white border border-info"
+                >
+                  {c}
+                </span>
+              ))
+            ) : (
+              <span className="text-2xs text-muted-foreground">마켓 미결정</span>
+            )}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-6 gap-3">
+          <Field label="RIM INCH" value={tire.rimInch} />
+          <Field label="SS" value={tire.ss} />
+          <Field label="LI" value={tire.li} />
+          <Field label="PLY" value={tire.ply} />
+          <Field label="GRV DEPTH" value={tire.grvDepth} />
+          <Field label="RADIAL/BIAS" value={tire.radialBias} />
+          <Field label="SEGMENT" value={tire.segment.length ? tire.segment.join(', ') : null} />
+          <Field label="FRT" value={tire.frt} />
+          <Field label="POR" value={tire.por} />
+          <Field label="WINTER" value={tire.winter} />
+          <Field label="POSITION" value={tire.tirePosition} />
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function MatchedTable({ result }: { result: MatchResult }) {
+  const { matched, matchedCount, total } = result;
+  return (
+    <section className="bg-card border border-border rounded-xl shadow-xs overflow-hidden">
+      <div className="px-5 py-3 border-b border-border flex items-center justify-between">
+        <h3 className="text-xs font-extrabold text-primary uppercase tracking-widest">필요 시험</h3>
+        <span className="text-2xs font-mono font-bold text-secondary">
+          매칭 <span className="text-accent">{matchedCount}</span> / 전체 {total}
+        </span>
+      </div>
+
+      {matched.length === 0 ? (
+        <div className="p-10 text-center text-xs text-muted-foreground">
+          이 mcode에 매칭되는 시험이 없습니다.
+        </div>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="bg-muted/50 text-2xs uppercase tracking-wider text-secondary">
+                <th className="px-4 py-2.5 text-left font-bold">#</th>
+                <th className="px-4 py-2.5 text-left font-bold">시험 항목</th>
+                <th className="px-4 py-2.5 text-left font-bold">방법</th>
+                <th className="px-4 py-2.5 text-left font-bold">조건</th>
+                <th className="px-4 py-2.5 text-left font-bold">가혹도</th>
+                <th className="px-4 py-2.5 text-left font-bold">인증</th>
+                <th className="px-4 py-2.5 text-left font-bold">마켓 적중</th>
+                <th className="px-4 py-2.5 text-left font-bold">미평가</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {matched.map((m) => (
+                <tr key={m.id} className="hover:bg-muted/30">
+                  <td className="px-4 py-2.5 font-mono text-muted-foreground">{m.id}</td>
+                  <td className="px-4 py-2.5 font-bold text-foreground">{m.testItemName || '–'}</td>
+                  <td className="px-4 py-2.5 text-secondary">{m.testMethod || '–'}</td>
+                  <td className="px-4 py-2.5 font-mono text-secondary">
+                    {m.cdnPattern || m.testCondition || '–'}
+                  </td>
+                  <td className="px-4 py-2.5 font-mono">{m.endurSvrty || '–'}</td>
+                  <td className="px-4 py-2.5 font-mono text-2xs">
+                    {m.certiTestYn === 'Y' || m.certiType ? (
+                      <span className="text-info">{m.certiType || 'Y'}</span>
+                    ) : (
+                      '–'
+                    )}
+                  </td>
+                  <td className="px-4 py-2.5">
+                    <div className="flex flex-wrap gap-1">
+                      {m.marketHits.length ? (
+                        m.marketHits.map((h) => (
+                          <span
+                            key={h}
+                            className="px-1.5 py-0.5 rounded text-2xs font-mono font-bold bg-info/10 text-info"
+                          >
+                            {h}
+                          </span>
+                        ))
+                      ) : (
+                        <span className="text-2xs text-muted-foreground/60">전체</span>
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-4 py-2.5">
+                    {m.unevaluated.length ? (
+                      <span
+                        title={`평가하지 못한 조건: ${m.unevaluated.join(', ')}`}
+                        className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-2xs font-bold bg-warning-container text-warning"
+                      >
+                        <AlertTriangle className="h-3 w-3" />
+                        {m.unevaluated.join(', ')}
+                      </span>
+                    ) : (
+                      <span className="text-2xs text-muted-foreground/40">–</span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
+  );
+}

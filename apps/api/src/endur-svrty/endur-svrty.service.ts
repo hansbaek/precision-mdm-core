@@ -6,7 +6,8 @@ const RANK_TABLE = 'DW_ENDUR_SVRTY_RANK';
 const MAP_TABLE = 'DW_REGULATION_MARKET_MAP';
 
 /** Speed symbols at or above 'S' — determines the LTR high-speed ranking set. */
-const HIGH_SPEED_SYMBOLS = new Set(['S', 'T', 'U', 'H', 'V', 'W', 'Y']);
+/** ZR, (Y) 추가 - 백한승 */
+const HIGH_SPEED_SYMBOLS = new Set(['S', 'T', 'U', 'H', 'V', 'W', 'Y', '(Y)', 'ZR']);
 
 export interface SuggestCandidate {
   testCdnName: string;
@@ -52,7 +53,7 @@ interface RankRow {
  */
 @Injectable()
 export class EndurSvrtyService {
-  constructor(@InjectDataSource() private readonly dataSource: DataSource) {}
+  constructor(@InjectDataSource() private readonly dataSource: DataSource) { }
 
   async suggest(
     productLine: string,
