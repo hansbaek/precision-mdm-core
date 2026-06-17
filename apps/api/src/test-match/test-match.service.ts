@@ -1,8 +1,10 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
+import * as ExcelJS from 'exceljs';
 import { MARKET_COLS, TABLE_NAME } from '../template/template.constants';
 import {
+  CODE_TO_GROUP,
   DEFERRED_FILTER_COLS,
   MARKET_38,
   REGION_MAP,
@@ -22,6 +24,7 @@ export interface TireAttrs {
   productLine: string;
   mainMarket: string | null;
   market: ResolvedMarket;
+  tireSize: string | null;
   rimInch: number | null;
   ss: string | null;
   li: number | null;
@@ -33,6 +36,21 @@ export interface TireAttrs {
   por: string | null;
   winter: string | null;
   tirePosition: string | null;
+  tlIndicator: string | null;
+}
+
+/** 추출 이유 — 충족된 조건 1건 (PRODUCT_LINE/MARKET + 템플릿 값이 있는 조건들). */
+export interface ConditionReason {
+  col: string;
+  templateValue: string;
+  tireValue: string;
+}
+
+/** 미평가 조건 1건 (값은 있으나 평가 불가) + 사유. */
+export interface UnevaluatedDetail {
+  col: string;
+  templateValue: string;
+  reason: string;
 }
 
 export interface MatchedTest {
@@ -42,6 +60,8 @@ export interface MatchedTest {
   testMethod: string;
   testCondition: string;
   cdnPattern: string;
+  /** CDN_PATTERN의 치환자({SS}/{RADIAL_BIAS}/{POR})를 타이어 실제 값으로 펼친 조건명. */
+  expandedCondition: string;
   endurSvrty: string;
   certiTestYn: string;
   certiType: string;
@@ -49,6 +69,10 @@ export interface MatchedTest {
   marketHits: string[];
   /** 값이 있으나 현재 평가 불가했던 조건 컬럼 (사용자 검토 필요). */
   unevaluated: string[];
+  /** 추출 이유 — 충족된 조건 목록 (보고서용). */
+  reasons: ConditionReason[];
+  /** 미평가 조건 상세 + 사유 (보고서용). */
+  unevaluatedDetail: UnevaluatedDetail[];
 }
 
 export interface MatchResult {
@@ -65,8 +89,11 @@ const ATTR_SQL = `
 SELECT
   m.MAIN_MARKET main_market, m.PRODUCT_LINE product_line,
   md.MAIN_MKT mkt2, md.SEGMENT segment, md.FRT frt, md.POR por, md.M_PLUS_S mplus,
-  md.TIRE_SIZE tiresize,
-  m.INCH/100 rim_inch, m.LOAD_INDEX_SINGLE li, m.PLY_RATING ply, m.TIRE_POSITION tire_position,
+  CASE 
+	  WHEN md.TIRE_SIZE  IS NULL  THEN m.SIZE_DESCRIPTION
+	  ELSE md.TIRE_SIZE 
+  END Tiresize,
+  m.INCH/100 rim_inch, m.LOAD_INDEX_SINGLE li, m.PLY_RATING ply, m.TIRE_POSITION tire_position, m.TL tl,
   CASE WHEN substr(m.PRODUCT_SPEED_SYMBOL,1,1)='1' THEN '('||substr(m.PRODUCT_SPEED_SYMBOL,2,1)||')'
        ELSE substr(m.PRODUCT_SPEED_SYMBOL,2,1) END ss,
   CASE WHEN p.MAINGROOVEDEPTH=0 THEN NULL ELSE p.MAINGROOVEDEPTH END grv_depth,
@@ -81,7 +108,7 @@ WHERE m.ACTIVE_YN='Y' AND m.MCODE=:mc`;
 
 @Injectable()
 export class TestMatchService {
-  constructor(@InjectDataSource() private readonly dataSource: DataSource) {}
+  constructor(@InjectDataSource() private readonly dataSource: DataSource) { }
 
   // ---- 값 헬퍼 ----
   private str(v: unknown): string {
@@ -110,14 +137,23 @@ export class TestMatchService {
     if (mk.length === 1 && REGION_MAP[mk]) {
       return { codes: [...REGION_MAP[mk]], source: `region:${mk}` };
     }
-    // 2자리(OEM) / '-' / null → md.MAIN_MKT 최빈 38코드 1개
-    const freq = new Map<string, number>();
-    for (const r of mktRows)
-      for (const t of this.tokens38(r)) freq.set(t, (freq.get(t) ?? 0) + 1);
-    const top = [...freq.entries()].sort((a, b) => b[1] - a[1])[0];
-    const source =
-      mk.length === 2 ? `oem:${mk}→md최빈` : top ? 'md최빈' : 'none';
-    return { codes: top ? [top[0]] : [], source };
+    // 2자리(OEM) / '-' / null → md.MAIN_MKT 를 지역 그룹 단위로 집계.
+    // 가장 많은 그룹을 대표마켓으로 삼고, 그 그룹의 (실제 존재하는) 코드 셋을 반환.
+    // 예: "NA,E1~E6" → EU 6개 > NA 1개 → 대표 = E1~E6.
+    const codes: string[] = [];
+    for (const r of mktRows) for (const t of this.tokens38(r)) codes.push(t);
+    if (!codes.length) {
+      return { codes: [], source: mk.length === 2 ? `oem:${mk}→마켓없음` : 'none' };
+    }
+    const groupCount = new Map<string, number>();
+    for (const c of codes) {
+      const g = CODE_TO_GROUP[c];
+      if (g) groupCount.set(g, (groupCount.get(g) ?? 0) + 1);
+    }
+    const topGroup = [...groupCount.entries()].sort((a, b) => b[1] - a[1])[0][0];
+    const groupCodes = [...new Set(codes.filter((c) => CODE_TO_GROUP[c] === topGroup))];
+    const source = mk.length === 2 ? `oem:${mk}→md그룹:${topGroup}` : `md그룹:${topGroup}`;
+    return { codes: groupCodes, source };
   }
 
   async resolveTire(mcode: string): Promise<TireAttrs | null> {
@@ -160,6 +196,7 @@ export class TestMatchService {
       productLine: first('PRODUCT_LINE') ?? '',
       mainMarket,
       market,
+      tireSize: first('TIRESIZE'),
       rimInch: firstNum('RIM_INCH'),
       ss: first('SS'),
       li: firstNum('LI'),
@@ -171,6 +208,7 @@ export class TestMatchService {
       por: first('POR'),
       winter: first('WINTER'),
       tirePosition: first('TIRE_POSITION'),
+      tlIndicator: first('TL'),
     };
   }
 
@@ -199,6 +237,23 @@ export class TestMatchService {
       default:
         return value === n ? 'pass' : 'fail';
     }
+  }
+
+  /**
+   * CDN_PATTERN 치환자를 타이어 값으로 펼친다.
+   *   {SS}→tire.ss, {RADIAL_BIAS}→tire.radialBias, {POR}→tire.por.
+   * 값이 없는 치환자는 원본 토큰을 그대로 남겨(예: {RADIAL_BIAS}) 미전개임을 드러낸다.
+   * 패턴이 비어 있으면 빈 문자열을 반환(표시는 TEST_CDN_NAME으로 폴백).
+   */
+  private expandPattern(
+    pattern: string,
+    vals: { ss: string | null; radialBias: string | null; por: string | null },
+  ): string {
+    if (!pattern) return '';
+    return pattern
+      .replace(/\{SS\}/g, vals.ss || '{SS}')
+      .replace(/\{RADIAL_BIAS\}/g, vals.radialBias || '{RADIAL_BIAS}')
+      .replace(/\{POR\}/g, vals.por || '{POR}');
   }
 
   private isOn(v: unknown): boolean {
@@ -258,12 +313,29 @@ export class TestMatchService {
     return tireVals.some((v) => list.has(v)) ? 'pass' : 'fail';
   }
 
+  /**
+   * resolveTire가 null일 때 원인을 구분해 안내 메시지를 만든다.
+   *  - V_MCODE_INFO_4_HINT에 없음 → 미존재
+   *  - 있으나 활성 행 없음(ACTIVE_YN<>'Y') → 비활성(단종)
+   *  - 그 외 → 속성 도출 불가
+   */
+  private async explainMissing(mcode: string): Promise<string> {
+    const rows: RawRow[] = await this.dataSource.query(
+      `SELECT ACTIVE_YN FROM V_MCODE_INFO_4_HINT WHERE MCODE = :1`,
+      [mcode],
+    );
+    if (!rows.length) return `존재하지 않는 mcode입니다: '${mcode}'`;
+    const hasActive = rows.some(
+      (r) => this.str(r['ACTIVE_YN']).toUpperCase() === 'Y',
+    );
+    if (!hasActive)
+      return `비활성(단종) 제품입니다: '${mcode}' — 활성 제품(ACTIVE_YN=Y)만 조회됩니다.`;
+    return `mcode '${mcode}'의 속성을 도출할 수 없습니다 (마켓 정보 확인).`;
+  }
+
   async match(mcode: string): Promise<MatchResult> {
     const tire = await this.resolveTire(mcode);
-    if (!tire)
-      throw new NotFoundException(
-        `mcode '${mcode}' 정보를 찾을 수 없습니다 (활성/마켓정보 확인).`,
-      );
+    if (!tire) throw new NotFoundException(await this.explainMissing(mcode));
 
     const rows: RawRow[] = await this.dataSource.query(
       `SELECT * FROM ${TABLE_NAME} ORDER BY TMPLT_ID`,
@@ -290,38 +362,63 @@ export class TestMatchService {
         if (marketHits.length === 0) continue;
       }
 
-      // 2) 평가 가능한 나머지 조건 (하나라도 fail이면 제외)
-      const checks: Verdict[] = [
-        this.evalCsvMember(r['SS'], tireSsNorm),
-        this.evalRange(r['RIM_INCH'], tire.rimInch),
-        this.evalRange(r['LI'], tire.li),
-        this.evalRange(r['PLY_RATING'], tire.ply),
-        this.evalRange(r['GRV_DEPTH'], tire.grvDepth),
-        this.evalFlag(r['POR'], porOn),
-        this.evalFlag(r['FRT'], frtOn),
-        this.evalFlag(r['SNOW_MARK'], snowOn),
-        this.evalTbrPosition(r['TBR_POSITION'], tire.tirePosition),
-        this.evalCsvIntersect(r['TBR_SEGMENT'], tire.segment),
+      // 2) 평가 가능한 조건 명세 (컬럼 / template값 / 타이어값 / 판정)
+      const num = (n: number | null) => (n == null ? '' : String(n));
+      const specs: {
+        col: string;
+        tmpl: string;
+        tireVal: string;
+        verdict: Verdict;
+      }[] = [
+        { col: 'SS', tmpl: this.str(r['SS']), tireVal: tireSsNorm ?? '', verdict: this.evalCsvMember(r['SS'], tireSsNorm) },
+        { col: 'RIM_INCH', tmpl: this.str(r['RIM_INCH']), tireVal: num(tire.rimInch), verdict: this.evalRange(r['RIM_INCH'], tire.rimInch) },
+        { col: 'LI', tmpl: this.str(r['LI']), tireVal: num(tire.li), verdict: this.evalRange(r['LI'], tire.li) },
+        { col: 'PLY_RATING', tmpl: this.str(r['PLY_RATING']), tireVal: num(tire.ply), verdict: this.evalRange(r['PLY_RATING'], tire.ply) },
+        { col: 'GRV_DEPTH', tmpl: this.str(r['GRV_DEPTH']), tireVal: num(tire.grvDepth), verdict: this.evalRange(r['GRV_DEPTH'], tire.grvDepth) },
+        { col: 'POR', tmpl: this.str(r['POR']), tireVal: tire.por ?? '', verdict: this.evalFlag(r['POR'], porOn) },
+        { col: 'FRT', tmpl: this.str(r['FRT']), tireVal: tire.frt ?? '', verdict: this.evalFlag(r['FRT'], frtOn) },
+        { col: 'SNOW_MARK', tmpl: this.str(r['SNOW_MARK']), tireVal: tire.winter ?? '', verdict: this.evalFlag(r['SNOW_MARK'], snowOn) },
+        { col: 'TBR_POSITION', tmpl: this.str(r['TBR_POSITION']), tireVal: tire.tirePosition ?? '', verdict: this.evalTbrPosition(r['TBR_POSITION'], tire.tirePosition) },
+        { col: 'TBR_SEGMENT', tmpl: this.str(r['TBR_SEGMENT']), tireVal: tire.segment.join(','), verdict: this.evalCsvIntersect(r['TBR_SEGMENT'], tire.segment) },
+        { col: 'TL_INDICATOR', tmpl: this.str(r['TL_INDICATOR']), tireVal: tire.tlIndicator ?? '', verdict: this.evalCsvMember(r['TL_INDICATOR'], tire.tlIndicator) },
+        { col: 'RADIAL_BIAS', tmpl: this.str(r['RADIAL_BIAS']), tireVal: tire.radialBias ?? '', verdict: this.evalCsvMember(r['RADIAL_BIAS'], tire.radialBias) },
       ];
-      if (checks.includes('fail')) continue;
+      if (specs.some((s) => s.verdict === 'fail')) continue;
 
-      // 3) 미평가 조건 수집 (값은 있으나 평가 불가) — 행은 포함하되 경고
-      const unevaluated: string[] = [];
-      // unknown 이 된 평가가능 조건 (예: GRV 값 없음)
-      const rangeUnknownCols: [string, Verdict][] = [
-        ['SS', checks[0]],
-        ['RIM_INCH', checks[1]],
-        ['LI', checks[2]],
-        ['PLY_RATING', checks[3]],
-        ['GRV_DEPTH', checks[4]],
-        ['TBR_POSITION', checks[8]],
-        ['TBR_SEGMENT', checks[9]],
+      // 3) 추출 이유 + 미평가 상세 구성
+      const reasons: ConditionReason[] = [
+        { col: 'PRODUCT_LINE', templateValue: this.str(r['PRODUCT_LINE']), tireValue: tire.productLine },
+        onMarkets.length > 0
+          ? { col: 'MARKET', templateValue: onMarkets.join(','), tireValue: marketHits.join(',') }
+          : { col: 'MARKET', templateValue: '(지정 없음)', tireValue: '전체 적용' },
       ];
-      for (const [col, v] of rangeUnknownCols)
-        if (v === 'unknown') unevaluated.push(col);
+      const unevaluated: string[] = [];
+      const unevaluatedDetail: UnevaluatedDetail[] = [];
+      for (const s of specs) {
+        if (s.tmpl === '') continue; // 빈 조건=wildcard → 이유 아님
+        if (s.verdict === 'pass') {
+          reasons.push({ col: s.col, templateValue: s.tmpl, tireValue: s.tireVal });
+        } else if (s.verdict === 'unknown') {
+          unevaluated.push(s.col);
+          unevaluatedDetail.push({
+            col: s.col,
+            templateValue: s.tmpl,
+            reason: s.tireVal === '' ? '타이어 값 없음' : '평가 불가',
+          });
+        }
+      }
       // 소스 자체가 없는 보류 컬럼
-      for (const col of DEFERRED_FILTER_COLS)
-        if (this.str(r[col]) !== '') unevaluated.push(col);
+      for (const col of DEFERRED_FILTER_COLS) {
+        const tmpl = this.str(r[col]);
+        if (tmpl === '') continue;
+        unevaluated.push(col);
+        unevaluatedDetail.push({
+          col,
+          templateValue: tmpl,
+          reason:
+            col === 'SIZE_SMPL' ? '샘플 지정(필터 아님)' : '소스 미연결(보류)',
+        });
+      }
 
       matched.push({
         id: Number(r['TMPLT_ID'] ?? 0),
@@ -330,11 +427,19 @@ export class TestMatchService {
         testMethod: this.str(r['TEST_MTH_NAME']),
         testCondition: this.str(r['TEST_CDN_NAME']),
         cdnPattern: this.str(r['CDN_PATTERN']),
+        // 전개는 원본 ss(괄호 표기 '(Y)' 등)를 그대로 사용 — 매칭용 tireSsNorm(괄호 제거)와 구분.
+        expandedCondition: this.expandPattern(this.str(r['CDN_PATTERN']), {
+          ss: tire.ss,
+          radialBias: tire.radialBias,
+          por: tire.por,
+        }),
         endurSvrty: this.str(r['ENDUR_SVRTY']),
         certiTestYn: this.str(r['CERTI_TEST_YN']),
         certiType: this.str(r['CERTI_TYPE']),
         marketHits,
         unevaluated,
+        reasons,
+        unevaluatedDetail,
       });
     }
 
@@ -344,5 +449,56 @@ export class TestMatchService {
       matchedCount: matched.length,
       matched,
     };
+  }
+
+  /** 추출 이유 1건을 사람이 읽는 한 줄로. */
+  private reasonText(r: ConditionReason): string {
+    if (r.col === 'PRODUCT_LINE' || r.col === 'MARKET') return `${r.col}:${r.tireValue}`;
+    return `${r.col} ${r.tireValue}⟵${r.templateValue}`;
+  }
+
+  /** 필요시험 매칭 결과를 xlsx로 출력 (보고서 Excel 내보내기). */
+  async buildReportXlsx(mcode: string): Promise<Buffer> {
+    const result = await this.match(mcode); // 404는 그대로 전파
+    const t = result.tire;
+
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet('필요시험');
+
+    ws.addRow(['MCODE', t.mcode]);
+    ws.addRow(['제품라인', t.productLine]);
+    ws.addRow(['대표마켓', t.market.codes.join(', ')]);
+    ws.addRow(['사이즈', t.tireSize ?? '']);
+    ws.addRow(['SS / LI / PLY', `${t.ss ?? ''} / ${t.li ?? ''} / ${t.ply ?? ''}`]);
+    ws.addRow(['매칭', `${result.matchedCount} / ${result.total}`]);
+    ws.addRow([]);
+
+    const header = [
+      'ID', '시험항목', '시험방법', '조건', '가혹도', '인증', '적용마켓', '추출이유', '미평가',
+    ];
+    const headerRow = ws.addRow(header);
+    headerRow.font = { bold: true };
+
+    for (const m of result.matched) {
+      ws.addRow([
+        m.id,
+        m.testItemName,
+        m.testMethod,
+        m.expandedCondition || m.testCondition,
+        m.endurSvrty,
+        m.certiType,
+        m.marketHits.join(','),
+        m.reasons.map((r) => this.reasonText(r)).join(' / '),
+        m.unevaluatedDetail.map((u) => `${u.col}(${u.reason})`).join(', '),
+      ]);
+    }
+
+    const widths = [8, 22, 28, 18, 8, 14, 18, 56, 30];
+    ws.columns.forEach((c, i) => {
+      c.width = widths[i] ?? 14;
+    });
+
+    const buffer = await wb.xlsx.writeBuffer();
+    return Buffer.from(buffer);
   }
 }

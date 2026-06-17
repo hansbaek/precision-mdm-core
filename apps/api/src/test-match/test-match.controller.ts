@@ -1,4 +1,11 @@
-import { BadRequestException, Controller, Get, Query } from '@nestjs/common';
+import {
+  BadRequestException,
+  Controller,
+  Get,
+  Query,
+  Res,
+} from '@nestjs/common';
+import type { Response } from 'express';
 import { ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { TestMatchService } from './test-match.service';
 
@@ -34,5 +41,27 @@ export class TestMatchController {
     const tire = await this.service.resolveTire(mc);
     if (!tire) throw new BadRequestException(`mcode '${mc}' 정보 없음.`);
     return tire;
+  }
+
+  @Get('export')
+  @ApiOperation({
+    summary: 'mcode 필요시험 보고서 xlsx 다운로드',
+    description: '매칭 결과(시험·추출이유·미평가)를 Excel로 출력.',
+  })
+  @ApiQuery({ name: 'mcode', required: true, description: '제품 코드(mcode)' })
+  async export(@Query('mcode') mcode: string, @Res() res: Response) {
+    const mc = (mcode ?? '').trim();
+    if (!mc) throw new BadRequestException('mcode 파라미터가 필요합니다.');
+    const buffer = await this.service.buildReportXlsx(mc); // 404 전파
+    res.setHeader(
+      'Content-Type',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    );
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="test-match-${mc}.xlsx"`,
+    );
+    res.setHeader('Content-Length', buffer.length);
+    res.end(buffer);
   }
 }

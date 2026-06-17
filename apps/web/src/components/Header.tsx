@@ -3,8 +3,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { Bell, HelpCircle, Moon, Search, Settings, Sun } from 'lucide-react';
+import { Bell, HelpCircle, Languages, Moon, Search, Settings, Sun } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { useTranslation } from 'react-i18next';
 
 import { Button } from '@/components/ui/button';
 import { Kbd, KbdGroup } from '@/components/ui/kbd';
@@ -13,20 +14,19 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { useTheme } from '@/components/theme/use-theme';
 
 interface HeaderProps {
+  /** 활성 모듈의 종속 탭 목록 (빈 배열이면 탭 바 숨김). */
+  tabs: { id: string; labelKey: string }[];
   activeTab: string;
   setActiveTab: (tab: string) => void;
   onOpenPalette: () => void;
 }
 
-export default function Header({ activeTab, setActiveTab, onOpenPalette }: HeaderProps) {
+export default function Header({ tabs, activeTab, setActiveTab, onOpenPalette }: HeaderProps) {
   const { theme, setTheme } = useTheme();
+  const { t, i18n } = useTranslation();
 
-  const tabs = [
-    { id: 'dashboard', label: 'Dashboard' },
-    { id: 'test-match', label: '필요시험조회' },
-    { id: 'analytics', label: 'Analytics' },
-    { id: 'reports', label: 'Reports' },
-  ];
+  const isEn = (i18n.language || 'kr').startsWith('en');
+  const toggleLang = () => i18n.changeLanguage(isEn ? 'kr' : 'en');
 
   const recentAlerts = [
     { id: 1, text: 'T-10045 status shifted to Pending.', time: '10m ago' },
@@ -60,7 +60,7 @@ export default function Header({ activeTab, setActiveTab, onOpenPalette }: Heade
                   : 'text-secondary hover:text-primary'
                   }`}
               >
-                {tab.label}
+                {t(tab.labelKey)}
                 {isActive && (
                   <motion.span
                     layoutId="header-tab-underline"
@@ -130,6 +130,24 @@ export default function Header({ activeTab, setActiveTab, onOpenPalette }: Heade
               </div>
             </PopoverContent>
           </Popover>
+
+          {/* Language toggle (KO/EN) */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                id="header-btn-lang"
+                variant="ghost"
+                size="sm"
+                aria-label={isEn ? '한국어로 전환' : 'Switch to English'}
+                className="text-secondary gap-1.5 font-bold text-2xs"
+                onClick={toggleLang}
+              >
+                <Languages className="h-4 w-4" />
+                {isEn ? '한국어' : 'EN'}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>{t('navbar.profile.language')}</TooltipContent>
+          </Tooltip>
 
           {/* Theme toggle */}
           <Tooltip>

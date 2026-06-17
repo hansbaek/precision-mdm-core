@@ -7,6 +7,30 @@ import { TestClassificationService } from './test-classification.service';
 export class TestClassificationController {
   constructor(private readonly service: TestClassificationService) {}
 
+  @Get('list')
+  @ApiOperation({
+    summary: '분류 마스터 전체 목록 (관리/표시 화면)',
+    description: 'DW_HNT_CLASSIFICATION 행 목록. mode/group/item + 명칭 검색 필터.',
+  })
+  @ApiQuery({ name: 'mode', required: false })
+  @ApiQuery({ name: 'group', required: false })
+  @ApiQuery({ name: 'item', required: false })
+  @ApiQuery({ name: 'search', required: false, description: '명칭 부분검색' })
+  findAll(
+    @Query('mode') mode?: string,
+    @Query('group') group?: string,
+    @Query('item') item?: string,
+    @Query('search') search?: string,
+  ) {
+    return this.service.findAll({ mode, group, item, search });
+  }
+
+  @Get('modes')
+  @ApiOperation({ summary: '모드 목록 (필터 드롭다운 소스)' })
+  findModes() {
+    return this.service.findModes();
+  }
+
   @Get('groups')
   @ApiOperation({ summary: '시험 그룹 목록 (DW_HNT_CLASSIFICATION)' })
   @ApiQuery({ name: 'mode', required: false, description: "기본값 'Indoor'" })

@@ -1,5 +1,6 @@
 import { useState, type Dispatch, type SetStateAction } from 'react';
-import { AlertCircle, Download, Plus, Settings, Upload } from 'lucide-react';
+import { AlertCircle, Download, Plus, Upload } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { downloadTemplateXlsx } from '@/api/template';
 import FilterPanel from '@/components/FilterPanel';
 import StdTestItemTable from '@/components/StdTestItemTable';
@@ -63,32 +64,14 @@ interface StdItemsSectionProps {
 }
 
 export default function DashboardPage(props: DashboardPageProps) {
-  if (props.activeModule === 'test-master') {
-    return (
-      <StdItemsSection
-        {...props}
-        breadcrumb="MDM Home / 시험항목 기준정보 관리 (R&D Master)"
-        title="Test Item Master Database"
-        showFilters
-        showToolbar
-      />
-    );
-  }
-
-  if (props.activeModule === 'testing-protocols') {
-    return (
-      <StdItemsSection
-        {...props}
-        breadcrumb="MDM Home / STD 시험 항목 템플릿 (Testing Protocols)"
-        title="Standard Test Item Matrix"
-      />
-    );
-  }
-
+  const { t } = useTranslation();
   return (
-    <VirtualizedModulePlaceholder
-      activeModule={props.activeModule}
-      setActiveModule={props.setActiveModule}
+    <StdItemsSection
+      {...props}
+      breadcrumb={t('app.dashboard.breadcrumb')}
+      title={t('app.dashboard.title')}
+      showFilters
+      showToolbar
     />
   );
 }
@@ -119,6 +102,7 @@ function StdItemsSection({
   itemsPerPage,
   setItemsPerPage,
 }: StdItemsSectionProps) {
+  const { t } = useTranslation();
   const [uploadOpen, setUploadOpen] = useState(false);
 
   return (
@@ -149,7 +133,7 @@ function StdItemsSection({
             className="text-xs font-bold bg-accent hover:bg-accent-hover text-white mr-auto"
           >
             <Plus className="h-4 w-4" />
-            신규 항목 추가
+            {t('app.dashboard.addItem')}
           </Button>
           <Button
             id="btn-toolbar-download"
@@ -158,7 +142,7 @@ function StdItemsSection({
             className="text-xs font-medium text-secondary"
           >
             <Download className="h-4 w-4 text-primary" />
-            Excel Template Download
+            {t('app.dashboard.excelDownload')}
           </Button>
           <Button
             id="btn-toolbar-upload"
@@ -167,7 +151,7 @@ function StdItemsSection({
             className="text-xs font-medium text-secondary"
           >
             <Upload className="h-4 w-4 text-accent" />
-            Excel Template Upload
+            {t('app.dashboard.excelUpload')}
           </Button>
           <TemplateUploadModal
             isOpen={uploadOpen}
@@ -212,35 +196,6 @@ function StdItemsErrorState({ error, onRetry }: { error: string; onRetry: () => 
       <Button size="sm" onClick={onRetry} className="mt-1 text-xs font-bold">
         재시도
       </Button>
-    </div>
-  );
-}
-
-function VirtualizedModulePlaceholder({
-  activeModule,
-  setActiveModule,
-}: {
-  activeModule: string;
-  setActiveModule: (module: string) => void;
-}) {
-  return (
-    <div className="bg-card border border-border rounded-xl p-12 text-center max-w-xl mx-auto space-y-4 shadow-xs select-none">
-      <Settings
-        className="h-12 w-12 text-muted-foreground/40 mx-auto animate-spin"
-        style={{ animationDuration: '6s' }}
-      />
-      <h3 className="text-base font-bold text-primary font-hanken">
-        [{activeModule.toUpperCase()}] Module Is Currently Virtualized
-      </h3>
-      <p className="text-xs text-secondary leading-relaxed">
-        R&D 고유 위상 체계가 Test Item Master 핵심 DB 영역에 통합 조립 중입니다. 해당 모듈의
-        커스텀 기준정보는 Master Data Management 탭에서 생성 및 교류하여 주시기 바랍니다.
-      </p>
-      <div className="pt-2">
-        <Button onClick={() => setActiveModule('test-master')} className="font-extrabold text-xs">
-          Test Item Master 데이터로 회귀
-        </Button>
-      </div>
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import { useEffect, useRef, type ReactNode } from 'react';
 import { animate, useInView } from 'framer-motion';
 import { AlertCircle, Beaker, Database, Globe, Layers } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -19,14 +20,15 @@ export default function AnalyticsPage({
   error,
   onRetry,
 }: AnalyticsPageProps) {
+  const { t } = useTranslation();
   return (
     <div className="space-y-6">
       <div>
         <nav className="text-2xs text-secondary font-bold uppercase tracking-widest font-mono">
-          MDM Home / R&D 통계 대시보드
+          {t('app.analytics.breadcrumb')}
         </nav>
         <h2 className="font-hanken font-extrabold text-primary text-2xl tracking-tight mt-1.5 uppercase">
-          R&D Test Master Metrics
+          {t('app.analytics.title')}
         </h2>
       </div>
 
@@ -38,27 +40,27 @@ export default function AnalyticsPage({
         <>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
             <StatCard
-              label="전체 템플릿 항목"
+              label={t('app.analytics.total')}
               value={stats.total}
-              unit="건"
+              unit={t('app.analytics.unitCount')}
               icon={<Database className="h-10 w-10 text-primary bg-muted border border-border p-2 rounded-lg" />}
             />
             <StatCard
-              label="제품라인 (Product Line)"
+              label={t('app.analytics.productLines')}
               value={stats.distinctProductLines}
-              unit="종"
+              unit={t('app.analytics.unitKind')}
               icon={<Layers className="h-10 w-10 text-info bg-info-container p-2 rounded-lg" />}
             />
             <StatCard
-              label="시험방법 (Test Method)"
+              label={t('app.analytics.testMethods')}
               value={stats.distinctTestMethods}
-              unit="종"
+              unit={t('app.analytics.unitKind')}
               icon={<Beaker className="h-10 w-10 text-success bg-success-container p-2 rounded-lg" />}
             />
             <StatCard
-              label="평균 적용 시장 / 항목"
+              label={t('app.analytics.avgMarkets')}
               value={stats.avgMarketsPerItem}
-              unit="개"
+              unit={t('app.analytics.unitEach')}
               valueClassName="text-accent"
               icon={<Globe className="h-10 w-10 text-warning bg-warning-container p-2 rounded-lg" />}
             />
@@ -127,12 +129,13 @@ function StatCard({
 }
 
 function ProductLineDistribution({ stats }: { stats: StdStats }) {
+  const { t } = useTranslation();
   return (
     <div className="bg-card p-6 border border-border rounded-xl space-y-5 shadow-xs">
       <div className="flex items-center gap-2">
         <Layers className="h-4.5 w-4.5 text-accent" />
         <h3 className="text-xs font-extrabold text-primary uppercase tracking-widest">
-          제품라인별 분포 (Product Line)
+          {t('app.analytics.byProductLine')}
         </h3>
       </div>
       <div className="space-y-4 pt-1">
@@ -161,12 +164,13 @@ function ProductLineDistribution({ stats }: { stats: StdStats }) {
 }
 
 function TestMethodDistribution({ stats }: { stats: StdStats }) {
+  const { t } = useTranslation();
   return (
     <div className="bg-card p-6 border border-border rounded-xl space-y-5 shadow-xs">
       <div className="flex items-center gap-2">
         <Beaker className="h-4.5 w-4.5 text-accent" />
         <h3 className="text-xs font-extrabold text-primary uppercase tracking-widest">
-          시험방법별 분포 (Top 8)
+          {t('app.analytics.byTestMethod')}
         </h3>
       </div>
       <div className="space-y-3 pt-1">
@@ -198,6 +202,7 @@ function TestMethodDistribution({ stats }: { stats: StdStats }) {
 }
 
 function MarketCoverage({ stats }: { stats: StdStats }) {
+  const { t } = useTranslation();
   const max = Math.max(...stats.marketCoverage.map((m) => m.count), 1);
 
   return (
@@ -205,7 +210,7 @@ function MarketCoverage({ stats }: { stats: StdStats }) {
       <div className="flex items-center gap-2">
         <Globe className="h-4.5 w-4.5 text-accent" />
         <h3 className="text-xs font-extrabold text-primary uppercase tracking-widest">
-          시장별 커버리지 (Market Coverage) · 전체 {stats.total}건 기준
+          {t('app.analytics.marketCoverage')} · {stats.total}
         </h3>
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-5 gap-y-2.5 pt-1">

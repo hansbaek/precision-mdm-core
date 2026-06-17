@@ -28,3 +28,39 @@ export const getTestClassificationConditions = (
       params: { item, method, ...(group ? { group } : {}) },
     })
     .then(res => res.data);
+
+// ── 분류 마스터 관리/표시 화면 ───────────────────────────────
+
+export interface ClassificationRow {
+  id: string;
+  target: string;
+  mode: string;
+  group: string;
+  item: string;
+  method: string;
+  condition: string;
+  level: string;
+}
+
+export interface ClassificationListFilters {
+  mode?: string;
+  group?: string;
+  item?: string;
+  search?: string;
+}
+
+export const getClassificationList = (
+  filters: ClassificationListFilters = {},
+): Promise<ClassificationRow[]> => {
+  const params: Record<string, string> = {};
+  if (filters.mode && filters.mode !== 'ALL') params.mode = filters.mode;
+  if (filters.group) params.group = filters.group;
+  if (filters.item) params.item = filters.item;
+  if (filters.search) params.search = filters.search;
+  return axiosInstance
+    .get('/test-classification/list', { params })
+    .then(res => res.data);
+};
+
+export const getClassificationModes = (): Promise<string[]> =>
+  axiosInstance.get('/test-classification/modes').then(res => res.data);

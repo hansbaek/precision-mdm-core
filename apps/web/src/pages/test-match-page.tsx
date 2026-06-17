@@ -1,29 +1,40 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { AlertTriangle, Search, Beaker } from 'lucide-react';
 import axios from 'axios';
+import { useTranslation } from 'react-i18next';
 
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import { matchTests, type MatchResult, type TireAttrs } from '@/api/test-match';
 
-export default function TestMatchPage() {
-  const [mcode, setMcode] = useState('');
+interface Props {
+  /** 탭 간 공유되는 현재 mcode (마운트 시 자동 조회). */
+  initialMcode?: string;
+  /** 조회 실행 성공 시 공유 mcode 갱신. */
+  onQueried?: (mcode: string) => void;
+}
+
+export default function TestMatchPage({ initialMcode = '', onQueried }: Props) {
+  const { t } = useTranslation();
+  const [mcode, setMcode] = useState(initialMcode);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<MatchResult | null>(null);
 
-  const run = async () => {
-    const mc = mcode.trim();
+  const runWith = async (raw: string) => {
+    const mc = raw.trim();
     if (!mc) return;
     setLoading(true);
     setError(null);
     try {
       const data = await matchTests(mc);
       setResult(data);
+      onQueried?.(mc);
     } catch (e) {
       setResult(null);
       if (axios.isAxiosError(e) && e.response?.status === 404) {
-        setError(`mcode '${mc}' 정보를 찾을 수 없습니다. (활성/마켓 정보 확인)`);
+        const serverMsg = (e.response.data as { message?: string } | undefined)?.message;
+        setError(serverMsg || `mcode '${mc}' 정보를 찾을 수 없습니다. (활성/마켓 정보 확인)`);
       } else {
         setError('조회 중 오류가 발생했습니다. 다시 시도해주세요.');
       }
@@ -31,6 +42,13 @@ export default function TestMatchPage() {
       setLoading(false);
     }
   };
+  const run = () => runWith(mcode);
+
+  // 마운트 시 공유 mcode가 있으면 자동 조회 (탭 복귀 시 결과 복원).
+  useEffect(() => {
+    if (initialMcode) void runWith(initialMcode);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div className="space-y-6">
@@ -39,12 +57,9 @@ export default function TestMatchPage() {
         <div className="px-5 py-3 border-b border-border">
           <h2 className="text-xs font-extrabold text-primary uppercase tracking-widest flex items-center gap-2">
             <Beaker className="h-4 w-4 text-accent" />
-            필요 시험 조회 · mcode → 시험 매칭
+            {t('app.testMatch.title')}
           </h2>
-          <p className="text-2xs text-secondary mt-1">
-            제품코드(mcode)의 속성(제품라인·대표마켓·치수·구조)을 도출해 TEMPLATE_STD_TEST_ITEM
-            조건과 대조, 수행해야 할 시험을 표시합니다.
-          </p>
+          <p className="text-2xs text-secondary mt-1">{t('app.testMatch.desc')}</p>
         </div>
         <div className="p-5 flex items-center gap-3">
           <div className="relative flex-1 max-w-md">
@@ -54,7 +69,7 @@ export default function TestMatchPage() {
               value={mcode}
               onChange={(e) => setMcode(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && run()}
-              placeholder="mcode 입력 (예: 3003974)"
+              placeholder={t('app.testMatch.placeholder')}
               className="w-full border border-border rounded-lg pl-9 pr-3 py-2 text-xs font-mono focus:border-primary focus:ring-2 focus:ring-ring/30 outline-none text-foreground bg-card transition-all"
             />
           </div>
@@ -65,7 +80,7 @@ export default function TestMatchPage() {
             className="text-xs font-bold bg-accent hover:bg-accent-hover text-white px-5"
           >
             {loading ? <Spinner className="h-3.5 w-3.5" /> : <Search className="h-3.5 w-3.5" />}
-            {loading ? '조회 중...' : '조회'}
+            {loading ? t('app.testMatch.searching') : t('app.testMatch.search')}
           </Button>
         </div>
       </section>
@@ -103,11 +118,12 @@ function Field({ label, value, mono = true }: { label: string; value: React.Reac
 }
 
 function TireCard({ tire }: { tire: TireAttrs }) {
+  const { t } = useTranslation();
   return (
     <section className="bg-card border border-border rounded-xl shadow-xs overflow-hidden">
       <div className="px-5 py-3 border-b border-border flex items-center justify-between">
         <h3 className="text-xs font-extrabold text-primary uppercase tracking-widest">
-          타이어 속성 · {tire.mcode}
+          {t('app.testMatch.tireAttrs')} · {tire.mcode}
         </h3>
         <span className="text-2xs font-mono font-bold bg-primary/10 text-primary px-2 py-1 rounded-md">
           {tire.productLine || '–'}
@@ -118,7 +134,7 @@ function TireCard({ tire }: { tire: TireAttrs }) {
         <div>
           <div className="flex items-center gap-2 mb-1.5">
             <label className="text-2xs font-bold text-secondary uppercase tracking-wider">
-              대표 마켓
+              {t('app.testMatch.repMarket')}
             </label>
             <span className="text-2xs text-muted-foreground/70 font-mono">
               main_market={tire.mainMarket ?? '–'} · {tire.market.source}
@@ -135,12 +151,13 @@ function TireCard({ tire }: { tire: TireAttrs }) {
                 </span>
               ))
             ) : (
-              <span className="text-2xs text-muted-foreground">마켓 미결정</span>
+              <span className="text-2xs text-muted-foreground">{t('app.testMatch.marketUndecided')}</span>
             )}
           </div>
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-6 gap-3">
+          <Field label="SIZE" value={tire.tireSize} />
           <Field label="RIM INCH" value={tire.rimInch} />
           <Field label="SS" value={tire.ss} />
           <Field label="LI" value={tire.li} />
@@ -152,6 +169,7 @@ function TireCard({ tire }: { tire: TireAttrs }) {
           <Field label="POR" value={tire.por} />
           <Field label="WINTER" value={tire.winter} />
           <Field label="POSITION" value={tire.tirePosition} />
+          <Field label="TL" value={tire.tlIndicator} />
         </div>
       </div>
     </section>
@@ -159,19 +177,20 @@ function TireCard({ tire }: { tire: TireAttrs }) {
 }
 
 function MatchedTable({ result }: { result: MatchResult }) {
+  const { t } = useTranslation();
   const { matched, matchedCount, total } = result;
   return (
     <section className="bg-card border border-border rounded-xl shadow-xs overflow-hidden">
       <div className="px-5 py-3 border-b border-border flex items-center justify-between">
-        <h3 className="text-xs font-extrabold text-primary uppercase tracking-widest">필요 시험</h3>
+        <h3 className="text-xs font-extrabold text-primary uppercase tracking-widest">{t('app.testMatch.requiredTests')}</h3>
         <span className="text-2xs font-mono font-bold text-secondary">
-          매칭 <span className="text-accent">{matchedCount}</span> / 전체 {total}
+          {t('app.testMatch.matchedOf', { matched: matchedCount, total })}
         </span>
       </div>
 
       {matched.length === 0 ? (
         <div className="p-10 text-center text-xs text-muted-foreground">
-          이 mcode에 매칭되는 시험이 없습니다.
+          {t('app.testMatch.noMatch')}
         </div>
       ) : (
         <div className="overflow-x-auto">
@@ -179,13 +198,13 @@ function MatchedTable({ result }: { result: MatchResult }) {
             <thead>
               <tr className="bg-muted/50 text-2xs uppercase tracking-wider text-secondary">
                 <th className="px-4 py-2.5 text-left font-bold">#</th>
-                <th className="px-4 py-2.5 text-left font-bold">시험 항목</th>
-                <th className="px-4 py-2.5 text-left font-bold">방법</th>
-                <th className="px-4 py-2.5 text-left font-bold">조건</th>
-                <th className="px-4 py-2.5 text-left font-bold">가혹도</th>
-                <th className="px-4 py-2.5 text-left font-bold">인증</th>
-                <th className="px-4 py-2.5 text-left font-bold">마켓 적중</th>
-                <th className="px-4 py-2.5 text-left font-bold">미평가</th>
+                <th className="px-4 py-2.5 text-left font-bold">{t('app.testMatch.colTest')}</th>
+                <th className="px-4 py-2.5 text-left font-bold">{t('app.testMatch.colMethod')}</th>
+                <th className="px-4 py-2.5 text-left font-bold">{t('app.testMatch.colCondition')}</th>
+                <th className="px-4 py-2.5 text-left font-bold">{t('app.testMatch.colSeverity')}</th>
+                <th className="px-4 py-2.5 text-left font-bold">{t('app.testMatch.colCerti')}</th>
+                <th className="px-4 py-2.5 text-left font-bold">{t('app.testMatch.colMarketHit')}</th>
+                <th className="px-4 py-2.5 text-left font-bold">{t('app.testMatch.colUneval')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -195,7 +214,7 @@ function MatchedTable({ result }: { result: MatchResult }) {
                   <td className="px-4 py-2.5 font-bold text-foreground">{m.testItemName || '–'}</td>
                   <td className="px-4 py-2.5 text-secondary">{m.testMethod || '–'}</td>
                   <td className="px-4 py-2.5 font-mono text-secondary">
-                    {m.cdnPattern || m.testCondition || '–'}
+                    {m.expandedCondition || m.testCondition || '–'}
                   </td>
                   <td className="px-4 py-2.5 font-mono">{m.endurSvrty || '–'}</td>
                   <td className="px-4 py-2.5 font-mono text-2xs">
@@ -217,7 +236,7 @@ function MatchedTable({ result }: { result: MatchResult }) {
                           </span>
                         ))
                       ) : (
-                        <span className="text-2xs text-muted-foreground/60">전체</span>
+                        <span className="text-2xs text-muted-foreground/60">{t('app.testMatch.all')}</span>
                       )}
                     </div>
                   </td>

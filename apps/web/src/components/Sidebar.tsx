@@ -14,6 +14,7 @@ import {
   ChevronLeft,
   ChevronRight,
 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import logoSymbol from '@/assets/HKT_Symbol.svg';
 
 interface SidebarProps {
@@ -24,13 +25,14 @@ interface SidebarProps {
 
 export default function Sidebar({ activeModule, setActiveModule, itemsCount }: SidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
+  const { t } = useTranslation();
 
   const menuItems = [
-    { id: 'test-master', label: 'Test Item Master', icon: Database, badge: itemsCount },
-    { id: 'material-specs', label: 'Material Specs', icon: FileSpreadsheet },
-    { id: 'vehicle-config', label: 'Vehicle Config', icon: Tractor },
-    { id: 'testing-protocols', label: 'Testing Protocols', icon: Compass },
-    { id: 'data-audit', label: 'Data Audit', icon: ShieldCheck },
+    { id: 'test-master', label: t('app.nav.testMaster'), icon: Database, badge: itemsCount },
+    { id: 'testing-protocols', label: t('app.nav.classificationMaster'), icon: Compass },
+    { id: 'material-specs', label: t('app.nav.materialSpecs'), icon: FileSpreadsheet },
+    { id: 'vehicle-config', label: t('app.nav.vehicleConfig'), icon: Tractor },
+    { id: 'data-audit', label: t('app.nav.dataAudit'), icon: ShieldCheck },
   ];
 
   return (
@@ -124,17 +126,17 @@ export default function Sidebar({ activeModule, setActiveModule, itemsCount }: S
         >
           <a href="#support" className="flex items-center gap-2 hover:text-white transition-colors py-0.5 font-bold">
             <HelpCircle className="h-3.5 w-3.5 shrink-0" />
-            <span>Support & Helpdesk</span>
+            <span>{t('app.nav.support')}</span>
           </a>
 
           <div className="flex items-center justify-between py-1.5 border-t border-sidebar-border pt-3">
             <span className="flex items-center gap-2 font-bold">
               {/* Fixed light green: sidebar stays navy in both themes */}
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse shrink-0" />
-              <span>System Status</span>
+              <span>{t('app.nav.systemStatus')}</span>
             </span>
             <span className="text-2xs bg-sidebar-accent text-emerald-400 font-mono font-bold px-2 py-0.5 rounded-md uppercase tracking-wide">
-              ONLINE
+              {t('app.nav.online')}
             </span>
           </div>
         </div>

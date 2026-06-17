@@ -264,3 +264,40 @@ body {
 .animate-fade-in {
   animation: fadeIn 0.25s ease-out forwards;
 }
+
+/* ── 인쇄 전용 ─────────────────────────────────────────────
+   보고서(인쇄 버튼)에서 앱 셸(사이드바·헤더·푸터)을 숨기고,
+   화면 고정 높이/스크롤 제약을 풀어 보고서가 페이지에 걸쳐 흐르게 한다. */
+@media print {
+  aside,
+  header,
+  footer {
+    display: none !important;
+  }
+
+  /* h-screen + overflow-hidden 클리핑 해제 → 전체 내용 출력 */
+  .h-screen {
+    height: auto !important;
+  }
+  body * {
+    overflow: visible !important;
+  }
+  main {
+    padding: 0 !important;
+  }
+
+  /* 배지/막대 등 배경색이 인쇄에 반영되도록 */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* 카드가 페이지 경계에서 잘리지 않도록 */
+  .break-inside-avoid {
+    break-inside: avoid;
+  }
+
+  @page {
+    margin: 14mm;
+  }
+}
