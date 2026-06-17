@@ -155,7 +155,11 @@ export class TemplateService {
     // TBR-only columns are valid only when PRODUCT_LINE is TBR. For any other
     // product line they are forced to NULL — blocking TBR values from being
     // saved and clearing them when a row is switched away from TBR.
-    const effectivePL = (dto.productLine ?? existing.productLine ?? '').toUpperCase();
+    const effectivePL = (
+      dto.productLine ??
+      existing.productLine ??
+      ''
+    ).toUpperCase();
     const isTbr = effectivePL === 'TBR';
 
     const textMap: Record<string, string | null | undefined> = {

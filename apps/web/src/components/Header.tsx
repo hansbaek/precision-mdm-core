@@ -3,15 +3,18 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { Bell, HelpCircle, Languages, Moon, Search, Settings, Sun } from 'lucide-react';
+import { Bell, HelpCircle, Languages, LogOut, Moon, Search, Settings, Sun } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router';
 
 import { Button } from '@/components/ui/button';
 import { Kbd, KbdGroup } from '@/components/ui/kbd';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useTheme } from '@/components/theme/use-theme';
+import { useUserProfile } from '@/hooks/use-user-profile';
+import { clearSession } from '@/hooks/use-session';
 
 interface HeaderProps {
   /** 활성 모듈의 종속 탭 목록 (빈 배열이면 탭 바 숨김). */
@@ -24,6 +27,17 @@ interface HeaderProps {
 export default function Header({ tabs, activeTab, setActiveTab, onOpenPalette }: HeaderProps) {
   const { theme, setTheme } = useTheme();
   const { t, i18n } = useTranslation();
+  const navigate = useNavigate();
+  const profile = useUserProfile((s) => s.userProfile);
+
+  const isEnLang = (i18n.language || 'kr').startsWith('en');
+  const displayName = (isEnLang ? profile.userNameEng : profile.userName) || profile.userId || '-';
+  const initials = (displayName || '?').trim().slice(0, 2).toUpperCase();
+
+  const handleLogout = () => {
+    clearSession();
+    navigate('/login', { replace: true });
+  };
 
   const isEn = (i18n.language || 'kr').startsWith('en');
   const toggleLang = () => i18n.changeLanguage(isEn ? 'kr' : 'en');
@@ -199,16 +213,39 @@ export default function Header({ tabs, activeTab, setActiveTab, onOpenPalette }:
           </Tooltip>
         </div>
 
-        {/* User Badge Profile */}
-        <div className="flex items-center gap-3.5 border-l border-border pl-4 h-8 select-none">
-          <div className="h-8 w-8 rounded-lg bg-primary text-primary-foreground font-extrabold font-hanken text-xs flex items-center justify-center shadow-sm">
-            HB
-          </div>
-          <div className="hidden xl:flex flex-col text-left justify-center">
-            <span className="text-xs font-extrabold text-foreground leading-none">Hans Baek</span>
-            <span className="text-2xs text-muted-foreground font-mono mt-0.5">hans.baek@gmail.com</span>
-          </div>
-        </div>
+        {/* User Badge Profile + Logout */}
+        <Popover>
+          <PopoverTrigger asChild>
+            <button className="flex items-center gap-3.5 border-l border-border pl-4 h-8 select-none cursor-pointer outline-none">
+              <div className="h-8 w-8 rounded-lg bg-primary text-primary-foreground font-extrabold font-hanken text-xs flex items-center justify-center shadow-sm">
+                {initials}
+              </div>
+              <div className="hidden xl:flex flex-col text-left justify-center">
+                <span className="text-xs font-extrabold text-foreground leading-none">
+                  {displayName}
+                </span>
+                <span className="text-2xs text-muted-foreground font-mono mt-0.5">
+                  {profile.teamName || profile.role || profile.userId}
+                </span>
+              </div>
+            </button>
+          </PopoverTrigger>
+          <PopoverContent align="end" className="w-56 p-0 text-xs overflow-hidden">
+            <div className="px-4 py-3 border-b border-border">
+              <p className="font-extrabold text-foreground">{displayName}</p>
+              <p className="text-2xs text-muted-foreground font-mono mt-0.5">
+                {profile.userId} · {profile.role}
+              </p>
+            </div>
+            <button
+              onClick={handleLogout}
+              className="w-full flex items-center gap-2 px-4 py-3 text-left hover:bg-muted text-foreground font-bold transition-colors"
+            >
+              <LogOut className="h-3.5 w-3.5" />
+              {t('logout')}
+            </button>
+          </PopoverContent>
+        </Popover>
       </div>
     </header>
   );

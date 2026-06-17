@@ -13,9 +13,11 @@ import {
   Compass,
   ChevronLeft,
   ChevronRight,
+  Users,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import logoSymbol from '@/assets/HKT_Symbol.svg';
+import { useCan } from '@/hooks/use-permissions-store';
 
 interface SidebarProps {
   activeModule: string;
@@ -26,14 +28,17 @@ interface SidebarProps {
 export default function Sidebar({ activeModule, setActiveModule, itemsCount }: SidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
   const { t } = useTranslation();
+  const can = useCan();
 
+  // 권한(view)이 있는 모듈만 노출. admin 모듈은 권한 보유자에게만 보인다.
   const menuItems = [
     { id: 'test-master', label: t('app.nav.testMaster'), icon: Database, badge: itemsCount },
     { id: 'testing-protocols', label: t('app.nav.classificationMaster'), icon: Compass },
     { id: 'material-specs', label: t('app.nav.materialSpecs'), icon: FileSpreadsheet },
     { id: 'vehicle-config', label: t('app.nav.vehicleConfig'), icon: Tractor },
     { id: 'data-audit', label: t('app.nav.dataAudit'), icon: ShieldCheck },
-  ];
+    { id: 'admin', label: t('app.nav.admin'), icon: Users },
+  ].filter((item) => can(item.id, 'view'));
 
   return (
     <aside

@@ -7,7 +7,10 @@ import StdTestItemTable from '@/components/StdTestItemTable';
 import TableSkeleton from '@/components/TableSkeleton';
 import TemplateUploadModal from '@/components/TemplateUploadModal';
 import { Button } from '@/components/ui/button';
+import { useCan } from '@/hooks/use-permissions-store';
 import type { FilterOptions, StdTestItem } from '@/types';
+
+const DASHBOARD_MENU = 'test-master.dashboard';
 
 type SortOrder = 'asc' | 'desc';
 
@@ -103,6 +106,10 @@ function StdItemsSection({
   setItemsPerPage,
 }: StdItemsSectionProps) {
   const { t } = useTranslation();
+  const can = useCan();
+  const canCreate = can(DASHBOARD_MENU, 'create');
+  const canUpdate = can(DASHBOARD_MENU, 'update');
+  const canDelete = can(DASHBOARD_MENU, 'delete');
   const [uploadOpen, setUploadOpen] = useState(false);
 
   return (
@@ -127,32 +134,36 @@ function StdItemsSection({
 
       {showToolbar && (
         <div className="flex items-center justify-end gap-2">
-          <Button
-            id="btn-toolbar-add"
-            onClick={onAdd}
-            className="text-xs font-bold bg-accent hover:bg-accent-hover text-white mr-auto"
-          >
-            <Plus className="h-4 w-4" />
-            {t('app.dashboard.addItem')}
-          </Button>
+          {canCreate && (
+            <Button
+              id="btn-toolbar-add"
+              onClick={onAdd}
+              className="text-xs font-bold bg-accent hover:bg-accent-hover text-white mr-auto"
+            >
+              <Plus className="h-4 w-4" />
+              {t('app.dashboard.addItem')}
+            </Button>
+          )}
           <Button
             id="btn-toolbar-download"
             variant="outline"
             onClick={() => downloadTemplateXlsx()}
-            className="text-xs font-medium text-secondary"
+            className={`text-xs font-medium text-secondary${canCreate ? '' : ' ml-auto'}`}
           >
             <Download className="h-4 w-4 text-primary" />
             {t('app.dashboard.excelDownload')}
           </Button>
-          <Button
-            id="btn-toolbar-upload"
-            variant="outline"
-            onClick={() => setUploadOpen(true)}
-            className="text-xs font-medium text-secondary"
-          >
-            <Upload className="h-4 w-4 text-accent" />
-            {t('app.dashboard.excelUpload')}
-          </Button>
+          {canUpdate && (
+            <Button
+              id="btn-toolbar-upload"
+              variant="outline"
+              onClick={() => setUploadOpen(true)}
+              className="text-xs font-medium text-secondary"
+            >
+              <Upload className="h-4 w-4 text-accent" />
+              {t('app.dashboard.excelUpload')}
+            </Button>
+          )}
           <TemplateUploadModal
             isOpen={uploadOpen}
             onClose={() => setUploadOpen(false)}
@@ -172,6 +183,8 @@ function StdItemsSection({
             onView={onView}
             onEdit={onEdit}
             onDelete={onDelete}
+            canEdit={canUpdate}
+            canDelete={canDelete}
             sortBy={sortBy}
             setSortBy={setSortBy}
             sortOrder={sortOrder}

@@ -10,7 +10,8 @@ export class TestClassificationController {
   @Get('list')
   @ApiOperation({
     summary: '분류 마스터 전체 목록 (관리/표시 화면)',
-    description: 'DW_HNT_CLASSIFICATION 행 목록. mode/group/item + 명칭 검색 필터.',
+    description:
+      'DW_HNT_CLASSIFICATION 행 목록. mode/group/item + 명칭 검색 필터.',
   })
   @ApiQuery({ name: 'mode', required: false })
   @ApiQuery({ name: 'group', required: false })

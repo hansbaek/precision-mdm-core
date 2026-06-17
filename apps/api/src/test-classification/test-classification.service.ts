@@ -65,7 +65,9 @@ export class TestClassificationService {
   }
 
   /** 분류 마스터 전체 목록 (관리/표시 화면용). mode/group/item + 명칭 검색 필터. */
-  async findAll(filters: ClassificationListFilters = {}): Promise<ClassificationRow[]> {
+  async findAll(
+    filters: ClassificationListFilters = {},
+  ): Promise<ClassificationRow[]> {
     const where: string[] = [];
     const params: unknown[] = [];
     let idx = 1;

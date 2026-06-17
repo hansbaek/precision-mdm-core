@@ -16,6 +16,11 @@ enum NodeEnvironment {
   Test = 'test',
 }
 
+enum AuthProviderKind {
+  Local = 'local',
+  Sso = 'sso',
+}
+
 class EnvironmentVariables {
   @IsEnum(NodeEnvironment)
   @IsOptional()
@@ -75,6 +80,17 @@ class EnvironmentVariables {
   @IsBoolean()
   @IsOptional()
   DB_LOGGING?: boolean;
+
+  @IsString()
+  JWT_SECRET!: string;
+
+  @IsString()
+  @IsOptional()
+  JWT_EXPIRES_IN?: string;
+
+  @IsEnum(AuthProviderKind)
+  @IsOptional()
+  AUTH_PROVIDER?: AuthProviderKind;
 }
 
 export function validateEnvironment(config: Record<string, unknown>) {

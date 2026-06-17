@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
@@ -16,11 +16,14 @@ import StdTestItemDetailModal from './components/StdTestItemDetailModal';
 import StdTestItemEditModal from './components/StdTestItemEditModal';
 import { useStdStats } from './hooks/use-std-stats';
 import { useStdTestItems } from './hooks/use-std-test-items';
+import { useCan } from './hooks/use-permissions-store';
 import AnalyticsPage from './pages/analytics-page';
 import ClassificationMaster from './pages/classification-master';
 import DashboardPage from './pages/dashboard-page';
 import ReportsPage from './pages/reports-page';
 import TestMatchPage from './pages/test-match-page';
+import PermissionMatrixPage from './pages/admin/permission-matrix';
+import UsersAdminPage from './pages/admin/users';
 import type { FilterOptions, StdTestItem } from './types';
 
 const INITIAL_FILTERS: FilterOptions = {
@@ -37,8 +40,27 @@ const MODULE_TABS: Record<string, { id: string; labelKey: string }[]> = {
     { id: 'analytics', labelKey: 'app.tabs.analytics' },
     { id: 'reports', labelKey: 'app.tabs.reports' },
   ],
+  admin: [
+    { id: 'permissions', labelKey: 'app.tabs.permissions' },
+    { id: 'users', labelKey: 'app.tabs.users' },
+  ],
 };
-const tabsFor = (m: string) => MODULE_TABS[m] ?? [];
+
+/**
+ * 탭이 메뉴 권한으로 게이팅되는 모듈. 이 모듈의 탭은 `<module>.<tab>` 메뉴의 view 권한으로 필터된다.
+ * admin 등 그 외 모듈의 탭은 모듈 자체의 노출 여부로만 제어된다(내부 탭에는 별도 메뉴가 없음).
+ */
+const PERMISSION_BACKED_MODULES = new Set(['test-master']);
+
+/** 사이드바 모듈 id 순서 (권한 기반 기본 모듈 선택용). */
+const ALL_MODULE_IDS = [
+  'test-master',
+  'testing-protocols',
+  'material-specs',
+  'vehicle-config',
+  'data-audit',
+  'admin',
+];
 
 /** 준비중 모듈명 → i18n 키. */
 const MODULE_NAME_KEY: Record<string, string> = {
@@ -49,9 +71,17 @@ const MODULE_NAME_KEY: Record<string, string> = {
 
 export default function App() {
   const { t } = useTranslation();
+  const can = useCan();
   const [activeModule, setActiveModule] = useState('test-master');
   const [activeTab, setActiveTab] = useState('dashboard');
   const [paletteOpen, setPaletteOpen] = useState(false);
+
+  // 권한 view 가 있는 탭만. 권한 비귀속 모듈(admin 등)은 모든 탭 노출.
+  const visibleTabs = (m: string) => {
+    const tabs = MODULE_TABS[m] ?? [];
+    if (!PERMISSION_BACKED_MODULES.has(m)) return tabs;
+    return tabs.filter((tab) => can(`${m}.${tab.id}`, 'view'));
+  };
 
   const [filters, setFilters] = useState<FilterOptions>(INITIAL_FILTERS);
   const [appliedFilters, setAppliedFilters] = useState<FilterOptions>(INITIAL_FILTERS);
@@ -157,11 +187,23 @@ export default function App() {
     setStdCurrentPage(1);
   };
 
-  // 사이드바 모듈 전환 → 그 모듈의 기본(첫) 탭으로 리셋. 탭 없으면 ''.
+  // 사이드바 모듈 전환 → 그 모듈의 기본(첫) 허용 탭으로 리셋. 탭 없으면 ''.
   const handleModuleChange = (m: string) => {
     setActiveModule(m);
-    setActiveTab(tabsFor(m)[0]?.id ?? '');
+    setActiveTab(visibleTabs(m)[0]?.id ?? '');
   };
+
+  // 권한 적재 후 현재 모듈이 비허용이면 첫 허용 모듈로 전환(빈 화면 방지).
+  useEffect(() => {
+    if (!can(activeModule, 'view')) {
+      const first = ALL_MODULE_IDS.find((m) => can(m, 'view'));
+      if (first) {
+        setActiveModule(first);
+        setActiveTab(visibleTabs(first)[0]?.id ?? '');
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeModule, can]);
 
   // 커맨드 팔레트의 탭 선택 — 모든 탭은 시험항목기준마스터 종속이므로 모듈도 함께 설정.
   const goToTab = (tabId: string) => {
@@ -213,6 +255,10 @@ export default function App() {
       );
     }
     if (activeModule === 'testing-protocols') return <ClassificationMaster />;
+    if (activeModule === 'admin') {
+      if (activeTab === 'users') return <UsersAdminPage />;
+      return <PermissionMatrixPage />;
+    }
     return (
       <ModulePlaceholder
         title={t(MODULE_NAME_KEY[activeModule] ?? 'app.nav.testMaster')}
@@ -232,7 +278,7 @@ export default function App() {
 
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         <Header
-          tabs={tabsFor(activeModule)}
+          tabs={visibleTabs(activeModule)}
           activeTab={activeTab}
           setActiveTab={setActiveTab}
           onOpenPalette={() => setPaletteOpen(true)}

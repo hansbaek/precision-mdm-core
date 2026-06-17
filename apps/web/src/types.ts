@@ -13,6 +13,67 @@ export interface UserProfile {
   role: string;
 }
 
+export type PermissionAction = 'view' | 'create' | 'update' | 'delete';
+
+/** 한 메뉴에 대한 현재 사용자의 권한 (백엔드 /auth/me·signin 응답). */
+export interface MenuPermission {
+  menuId: string;
+  menuType: 'MODULE' | 'TAB';
+  parentId: string | null;
+  i18nKey: string | null;
+  sortOrder: number | null;
+  canView: boolean;
+  canCreate: boolean;
+  canUpdate: boolean;
+  canDelete: boolean;
+}
+
+/** 로그인 성공 응답. */
+export interface AuthSession {
+  token: string;
+  profile: UserProfile;
+  menus: MenuPermission[];
+}
+
+// ---- 관리자(권한 관리) ----
+export interface AdminRole {
+  roleId: string;
+  roleNm: string;
+  isSystemYn: string;
+  sortOrder: number | null;
+  useYn: string;
+}
+
+export interface AdminMenu {
+  menuId: string;
+  parentId: string | null;
+  menuType: 'MODULE' | 'TAB';
+  menuNm: string | null;
+  i18nKey: string | null;
+  sortOrder: number | null;
+  useYn: string;
+}
+
+export interface RoleMenuPermission {
+  menuId: string;
+  canView: boolean;
+  canCreate: boolean;
+  canUpdate: boolean;
+  canDelete: boolean;
+}
+
+export interface AdminUser {
+  userId: string;
+  userNm: string | null;
+  userNmEng: string | null;
+  teamNm: string | null;
+  teamNmEng: string | null;
+  authSource: string;
+  roleId: string;
+  roleNm: string | null;
+  useYn: string;
+}
+
 export interface FilterOptions {
   productLine: string;
   searchQuery: string;

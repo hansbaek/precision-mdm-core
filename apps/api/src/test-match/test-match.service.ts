@@ -108,11 +108,15 @@ WHERE m.ACTIVE_YN='Y' AND m.MCODE=:mc`;
 
 @Injectable()
 export class TestMatchService {
-  constructor(@InjectDataSource() private readonly dataSource: DataSource) { }
+  constructor(@InjectDataSource() private readonly dataSource: DataSource) {}
 
   // ---- 값 헬퍼 ----
   private str(v: unknown): string {
-    if (typeof v !== 'string' && typeof v !== 'number' && typeof v !== 'boolean')
+    if (
+      typeof v !== 'string' &&
+      typeof v !== 'number' &&
+      typeof v !== 'boolean'
+    )
       return '';
     return String(v).trim();
   }
@@ -132,7 +136,10 @@ export class TestMatchService {
   }
 
   // ---- 대표 마켓 결정 ----
-  private resolveMarket(mainMarket: string, mktRows: unknown[]): ResolvedMarket {
+  private resolveMarket(
+    mainMarket: string,
+    mktRows: unknown[],
+  ): ResolvedMarket {
     const mk = (mainMarket ?? '').trim();
     if (mk.length === 1 && REGION_MAP[mk]) {
       return { codes: [...REGION_MAP[mk]], source: `region:${mk}` };
@@ -143,16 +150,24 @@ export class TestMatchService {
     const codes: string[] = [];
     for (const r of mktRows) for (const t of this.tokens38(r)) codes.push(t);
     if (!codes.length) {
-      return { codes: [], source: mk.length === 2 ? `oem:${mk}→마켓없음` : 'none' };
+      return {
+        codes: [],
+        source: mk.length === 2 ? `oem:${mk}→마켓없음` : 'none',
+      };
     }
     const groupCount = new Map<string, number>();
     for (const c of codes) {
       const g = CODE_TO_GROUP[c];
       if (g) groupCount.set(g, (groupCount.get(g) ?? 0) + 1);
     }
-    const topGroup = [...groupCount.entries()].sort((a, b) => b[1] - a[1])[0][0];
-    const groupCodes = [...new Set(codes.filter((c) => CODE_TO_GROUP[c] === topGroup))];
-    const source = mk.length === 2 ? `oem:${mk}→md그룹:${topGroup}` : `md그룹:${topGroup}`;
+    const topGroup = [...groupCount.entries()].sort(
+      (a, b) => b[1] - a[1],
+    )[0][0];
+    const groupCodes = [
+      ...new Set(codes.filter((c) => CODE_TO_GROUP[c] === topGroup)),
+    ];
+    const source =
+      mk.length === 2 ? `oem:${mk}→md그룹:${topGroup}` : `md그룹:${topGroup}`;
     return { codes: groupCodes, source };
   }
 
@@ -370,34 +385,110 @@ export class TestMatchService {
         tireVal: string;
         verdict: Verdict;
       }[] = [
-        { col: 'SS', tmpl: this.str(r['SS']), tireVal: tireSsNorm ?? '', verdict: this.evalCsvMember(r['SS'], tireSsNorm) },
-        { col: 'RIM_INCH', tmpl: this.str(r['RIM_INCH']), tireVal: num(tire.rimInch), verdict: this.evalRange(r['RIM_INCH'], tire.rimInch) },
-        { col: 'LI', tmpl: this.str(r['LI']), tireVal: num(tire.li), verdict: this.evalRange(r['LI'], tire.li) },
-        { col: 'PLY_RATING', tmpl: this.str(r['PLY_RATING']), tireVal: num(tire.ply), verdict: this.evalRange(r['PLY_RATING'], tire.ply) },
-        { col: 'GRV_DEPTH', tmpl: this.str(r['GRV_DEPTH']), tireVal: num(tire.grvDepth), verdict: this.evalRange(r['GRV_DEPTH'], tire.grvDepth) },
-        { col: 'POR', tmpl: this.str(r['POR']), tireVal: tire.por ?? '', verdict: this.evalFlag(r['POR'], porOn) },
-        { col: 'FRT', tmpl: this.str(r['FRT']), tireVal: tire.frt ?? '', verdict: this.evalFlag(r['FRT'], frtOn) },
-        { col: 'SNOW_MARK', tmpl: this.str(r['SNOW_MARK']), tireVal: tire.winter ?? '', verdict: this.evalFlag(r['SNOW_MARK'], snowOn) },
-        { col: 'TBR_POSITION', tmpl: this.str(r['TBR_POSITION']), tireVal: tire.tirePosition ?? '', verdict: this.evalTbrPosition(r['TBR_POSITION'], tire.tirePosition) },
-        { col: 'TBR_SEGMENT', tmpl: this.str(r['TBR_SEGMENT']), tireVal: tire.segment.join(','), verdict: this.evalCsvIntersect(r['TBR_SEGMENT'], tire.segment) },
-        { col: 'TL_INDICATOR', tmpl: this.str(r['TL_INDICATOR']), tireVal: tire.tlIndicator ?? '', verdict: this.evalCsvMember(r['TL_INDICATOR'], tire.tlIndicator) },
-        { col: 'RADIAL_BIAS', tmpl: this.str(r['RADIAL_BIAS']), tireVal: tire.radialBias ?? '', verdict: this.evalCsvMember(r['RADIAL_BIAS'], tire.radialBias) },
+        {
+          col: 'SS',
+          tmpl: this.str(r['SS']),
+          tireVal: tireSsNorm ?? '',
+          verdict: this.evalCsvMember(r['SS'], tireSsNorm),
+        },
+        {
+          col: 'RIM_INCH',
+          tmpl: this.str(r['RIM_INCH']),
+          tireVal: num(tire.rimInch),
+          verdict: this.evalRange(r['RIM_INCH'], tire.rimInch),
+        },
+        {
+          col: 'LI',
+          tmpl: this.str(r['LI']),
+          tireVal: num(tire.li),
+          verdict: this.evalRange(r['LI'], tire.li),
+        },
+        {
+          col: 'PLY_RATING',
+          tmpl: this.str(r['PLY_RATING']),
+          tireVal: num(tire.ply),
+          verdict: this.evalRange(r['PLY_RATING'], tire.ply),
+        },
+        {
+          col: 'GRV_DEPTH',
+          tmpl: this.str(r['GRV_DEPTH']),
+          tireVal: num(tire.grvDepth),
+          verdict: this.evalRange(r['GRV_DEPTH'], tire.grvDepth),
+        },
+        {
+          col: 'POR',
+          tmpl: this.str(r['POR']),
+          tireVal: tire.por ?? '',
+          verdict: this.evalFlag(r['POR'], porOn),
+        },
+        {
+          col: 'FRT',
+          tmpl: this.str(r['FRT']),
+          tireVal: tire.frt ?? '',
+          verdict: this.evalFlag(r['FRT'], frtOn),
+        },
+        {
+          col: 'SNOW_MARK',
+          tmpl: this.str(r['SNOW_MARK']),
+          tireVal: tire.winter ?? '',
+          verdict: this.evalFlag(r['SNOW_MARK'], snowOn),
+        },
+        {
+          col: 'TBR_POSITION',
+          tmpl: this.str(r['TBR_POSITION']),
+          tireVal: tire.tirePosition ?? '',
+          verdict: this.evalTbrPosition(r['TBR_POSITION'], tire.tirePosition),
+        },
+        {
+          col: 'TBR_SEGMENT',
+          tmpl: this.str(r['TBR_SEGMENT']),
+          tireVal: tire.segment.join(','),
+          verdict: this.evalCsvIntersect(r['TBR_SEGMENT'], tire.segment),
+        },
+        {
+          col: 'TL_INDICATOR',
+          tmpl: this.str(r['TL_INDICATOR']),
+          tireVal: tire.tlIndicator ?? '',
+          verdict: this.evalCsvMember(r['TL_INDICATOR'], tire.tlIndicator),
+        },
+        {
+          col: 'RADIAL_BIAS',
+          tmpl: this.str(r['RADIAL_BIAS']),
+          tireVal: tire.radialBias ?? '',
+          verdict: this.evalCsvMember(r['RADIAL_BIAS'], tire.radialBias),
+        },
       ];
       if (specs.some((s) => s.verdict === 'fail')) continue;
 
       // 3) 추출 이유 + 미평가 상세 구성
       const reasons: ConditionReason[] = [
-        { col: 'PRODUCT_LINE', templateValue: this.str(r['PRODUCT_LINE']), tireValue: tire.productLine },
+        {
+          col: 'PRODUCT_LINE',
+          templateValue: this.str(r['PRODUCT_LINE']),
+          tireValue: tire.productLine,
+        },
         onMarkets.length > 0
-          ? { col: 'MARKET', templateValue: onMarkets.join(','), tireValue: marketHits.join(',') }
-          : { col: 'MARKET', templateValue: '(지정 없음)', tireValue: '전체 적용' },
+          ? {
+              col: 'MARKET',
+              templateValue: onMarkets.join(','),
+              tireValue: marketHits.join(','),
+            }
+          : {
+              col: 'MARKET',
+              templateValue: '(지정 없음)',
+              tireValue: '전체 적용',
+            },
       ];
       const unevaluated: string[] = [];
       const unevaluatedDetail: UnevaluatedDetail[] = [];
       for (const s of specs) {
         if (s.tmpl === '') continue; // 빈 조건=wildcard → 이유 아님
         if (s.verdict === 'pass') {
-          reasons.push({ col: s.col, templateValue: s.tmpl, tireValue: s.tireVal });
+          reasons.push({
+            col: s.col,
+            templateValue: s.tmpl,
+            tireValue: s.tireVal,
+          });
         } else if (s.verdict === 'unknown') {
           unevaluated.push(s.col);
           unevaluatedDetail.push({
@@ -453,7 +544,8 @@ export class TestMatchService {
 
   /** 추출 이유 1건을 사람이 읽는 한 줄로. */
   private reasonText(r: ConditionReason): string {
-    if (r.col === 'PRODUCT_LINE' || r.col === 'MARKET') return `${r.col}:${r.tireValue}`;
+    if (r.col === 'PRODUCT_LINE' || r.col === 'MARKET')
+      return `${r.col}:${r.tireValue}`;
     return `${r.col} ${r.tireValue}⟵${r.templateValue}`;
   }
 
@@ -469,12 +561,23 @@ export class TestMatchService {
     ws.addRow(['제품라인', t.productLine]);
     ws.addRow(['대표마켓', t.market.codes.join(', ')]);
     ws.addRow(['사이즈', t.tireSize ?? '']);
-    ws.addRow(['SS / LI / PLY', `${t.ss ?? ''} / ${t.li ?? ''} / ${t.ply ?? ''}`]);
+    ws.addRow([
+      'SS / LI / PLY',
+      `${t.ss ?? ''} / ${t.li ?? ''} / ${t.ply ?? ''}`,
+    ]);
     ws.addRow(['매칭', `${result.matchedCount} / ${result.total}`]);
     ws.addRow([]);
 
     const header = [
-      'ID', '시험항목', '시험방법', '조건', '가혹도', '인증', '적용마켓', '추출이유', '미평가',
+      'ID',
+      '시험항목',
+      '시험방법',
+      '조건',
+      '가혹도',
+      '인증',
+      '적용마켓',
+      '추출이유',
+      '미평가',
     ];
     const headerRow = ws.addRow(header);
     headerRow.font = { bold: true };

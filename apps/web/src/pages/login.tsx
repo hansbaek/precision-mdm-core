@@ -3,15 +3,15 @@ import { useEffect, useState } from "react";
 import { AxiosError } from "axios";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
-import { useAuthStore } from "@/hooks/use-auth-store";
-import { signIn } from "@/api/sign";
+import { useNavigate } from "react-router";
+import { signIn } from "@/api/auth";
+import { applySession } from "@/hooks/use-session";
 import { Spinner } from "@/components/ui/spinner";
 import { USER_ID_STORAGE } from "@/constants";
 
 function Login() {
   const { t } = useTranslation();
-
-  const login = useAuthStore((state) => state.login);
+  const navigate = useNavigate();
 
   const [loading, setLoading] = useState(false);
 
@@ -63,7 +63,9 @@ function Login() {
         } else {
           localStorage.removeItem(USER_ID_STORAGE);
         }
-        login(res.result); // res.result는 token 문자열임
+        // 토큰·프로필·권한을 스토어에 반영하고 보호 라우트로 이동.
+        applySession(res.result);
+        navigate("/", { replace: true });
       }
     } catch (e) {
       if (e instanceof AxiosError) {
@@ -86,9 +88,7 @@ function Login() {
         <div className="mt-4 flex flex-col items-center text-nowrap">
           <h1 className="block text-xl text-[#707786] antialiased font-hankook">
             <span className="dark:text-white">Welcome to </span>
-            <span className="text-orange-500 font-medium font-">
-              DII Boiler Plate
-            </span>
+            <span className="text-orange-500 font-medium">T:MDM</span>
           </h1>
         </div>
 

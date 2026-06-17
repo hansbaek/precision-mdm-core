@@ -54,6 +54,9 @@ interface Props {
   itemsPerPage: number;
   setItemsPerPage: (n: number) => void;
   onResetFilters?: () => void;
+  /** 권한 기반 행 액션 노출 (기본 true). */
+  canEdit?: boolean;
+  canDelete?: boolean;
 }
 
 function MarketChips({ active }: { active: string[] }) {
@@ -118,6 +121,7 @@ export default function StdTestItemTable({
   sortBy, setSortBy, sortOrder, setSortOrder,
   currentPage, setCurrentPage, itemsPerPage, setItemsPerPage,
   onResetFilters,
+  canEdit = true, canDelete = true,
 }: Props) {
   const [compact, setCompact] = useState(false);
 
@@ -234,19 +238,25 @@ export default function StdTestItemTable({
                         <Eye />
                         상세 보기
                       </DropdownMenuItem>
-                      <DropdownMenuItem onSelect={() => onEdit(item)} className="font-semibold text-xs">
-                        <Edit />
-                        수정 (Edit)
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem
-                        onSelect={() => onDelete(item)}
-                        variant="destructive"
-                        className="font-semibold text-xs"
-                      >
-                        <Trash2 />
-                        삭제 (Delete)
-                      </DropdownMenuItem>
+                      {canEdit && (
+                        <DropdownMenuItem onSelect={() => onEdit(item)} className="font-semibold text-xs">
+                          <Edit />
+                          수정 (Edit)
+                        </DropdownMenuItem>
+                      )}
+                      {canDelete && (
+                        <>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            onSelect={() => onDelete(item)}
+                            variant="destructive"
+                            className="font-semibold text-xs"
+                          >
+                            <Trash2 />
+                            삭제 (Delete)
+                          </DropdownMenuItem>
+                        </>
+                      )}
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </TableCell>

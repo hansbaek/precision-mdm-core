@@ -26,6 +26,10 @@ import { TemplateService } from './template.service';
 import { TemplateUploadService } from './template-upload.service';
 import { UpdateStdTestItemDto } from './dto/update-std-test-item.dto';
 import { CreateStdTestItemDto } from './dto/create-std-test-item.dto';
+import { RequirePermission } from '../permissions/decorators/require-permission.decorator';
+
+/** 시험항목기준마스터 데이터는 대시보드 탭에 귀속된다. */
+const DASHBOARD_MENU = 'test-master.dashboard';
 
 const UPLOAD_MAX_BYTES = 10 * 1024 * 1024;
 
@@ -79,6 +83,7 @@ export class TemplateController {
   }
 
   @Post('std-test-items')
+  @RequirePermission(DASHBOARD_MENU, 'create')
   @ApiOperation({
     summary: 'TEMPLATE_STD_TEST_ITEM 신규 생성',
     description:
@@ -89,6 +94,7 @@ export class TemplateController {
   }
 
   @Patch('std-test-items/:id')
+  @RequirePermission(DASHBOARD_MENU, 'update')
   @ApiOperation({ summary: 'TEMPLATE_STD_TEST_ITEM 수정' })
   update(
     @Param('id', ParseIntPipe) id: number,
@@ -98,6 +104,7 @@ export class TemplateController {
   }
 
   @Delete('std-test-items/:id')
+  @RequirePermission(DASHBOARD_MENU, 'delete')
   @ApiOperation({ summary: 'TEMPLATE_STD_TEST_ITEM 삭제 (하드 삭제)' })
   remove(@Param('id', ParseIntPipe) id: number) {
     return this.service.deleteStdTestItem(id);
@@ -120,6 +127,7 @@ export class TemplateController {
   }
 
   @Post('upload/apply')
+  @RequirePermission(DASHBOARD_MENU, 'update')
   @ApiOperation({
     summary: 'xlsx 업로드 동기화 적용 (단일 트랜잭션)',
     description:
