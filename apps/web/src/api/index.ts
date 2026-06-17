@@ -53,5 +53,11 @@ export const getIsLoggedIn = () => {
   return typeof window !== "undefined" ? Boolean(localStorage.getItem(LOCALSTORAGE_TOKEN)) : false;
 };
 
+/** 다운로드 파일명용 타임스탬프 (년월일시분, YYYYMMDDHHmm). */
+export const fileTimestamp = (d: Date = new Date()): string => {
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}${p(d.getHours())}${p(d.getMinutes())}`;
+};
+
 export const getUserProfile = (): Promise<CommonReturnType<UserProfile>> =>
   axiosInstance.get("/me").then((res) => res.data);

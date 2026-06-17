@@ -173,6 +173,15 @@ export class AdminService {
   async updateUser(userId: string, dto: UpdateUserDto): Promise<void> {
     const user = await this.userRepo.findOne({ where: { userId } });
     if (!user) throw new NotFoundException('사용자를 찾을 수 없습니다.');
+    // 기본 관리자 계정은 잠금 방지를 위해 비활성화/역할 강등을 차단한다.
+    if (userId === 'admin') {
+      if (dto.useYn === 'N') {
+        throw new BadRequestException('기본 관리자 계정은 비활성화할 수 없습니다.');
+      }
+      if (dto.roleId && dto.roleId !== 'ADMIN') {
+        throw new BadRequestException('기본 관리자 계정의 역할은 변경할 수 없습니다.');
+      }
+    }
     if (dto.roleId) await this.assertRoleExists(dto.roleId);
     Object.assign(user, {
       userNm: dto.userNm ?? user.userNm,

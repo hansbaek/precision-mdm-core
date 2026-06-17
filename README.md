@@ -1,4 +1,4 @@
-# HKRndMDM 모노레포 (Monorepo)
+# T:MDM 모노레포 (Monorepo)
 
 이 저장소는 `pnpm workspaces`를 사용하는 모노레포로 구성되어 있습니다.
 
@@ -137,8 +137,11 @@ template 188행을 메모리에서 평가합니다. **빈 조건은 wildcard(통
 - `SS`: CSV 멤버십 · `RIM_INCH`/`LI`/`PLY_RATING`/`GRV_DEPTH`: 연산자 문자열(`<=121`, `>12`,
   `<>17.5` 등) 평가 · `POR`/`FRT`/`SNOW_MARK`: 플래그 · `TBR_POSITION`(`A`=All 와일드카드)/
   `TBR_SEGMENT`: CSV
+- **`SIZE_SMPL`(규격 샘플)**: 타이어 규격을 `DW_SPEC_PLM_TIRE.SIZE_SMPL`(예: `11R22.5`)에서
+  가져와, 템플릿 `SIZE_SMPL`의 콤마 목록에 **포함될 때만 매칭**(CSV 멤버십). 타이어 규격을 못 구하면
+  미평가로 표기(제외하지 않음).
 - **미평가 처리**: 값이 있으나 현재 소스로 평가 불가한 조건(`GRV_DEPTH` 값 없음, `TL_INDICATOR`,
-  `TEMP_TIRE`/`UTQG`/`NEW_SIZE_YN`/`TBR_GRV_3`, `RADIAL_BIAS`(데이터 오염), `SIZE_SMPL`)은
+  `TEMP_TIRE`/`UTQG`/`NEW_SIZE_YN`/`TBR_GRV_3`, `RADIAL_BIAS`(데이터 오염))은
   행을 제외하지 않고 `unevaluated`로 표기 — 시험 누락(false negative)을 방지
 
 #### 관련 분석/검증 스크립트 (`apps/api/scripts`, 읽기 전용)
@@ -146,6 +149,31 @@ template 188행을 메모리에서 평가합니다. **빈 조건은 wildcard(통
 - `analyze-template-coverage.cjs` — 조건 컬럼 채움률·마켓 코드 커버리지
 - `verify-market-mapping.cjs` — 1자리 main_market → 38코드 매핑 검증
 - `phase1-resolve-tire.cjs` — mcode → 타이어 속성 도출 검증 (`node phase1-resolve-tire.cjs [mcode...]`)
+
+### 3. 인증 / 접근 권한 (RBAC)
+
+JWT 기반 로그인과 **역할(Role) 기반 메뉴·기능 권한**을 제공합니다.
+
+- **권한 단위**: 메뉴(모듈·탭) × 액션(조회/생성/수정/삭제). 조회 권한이 없는 메뉴는
+  사이드바·탭에서 숨겨지고, 변경 API는 전역 가드 + `@RequirePermission`으로 차단됩니다.
+- **기본 역할**: `ADMIN`(전체), `EDITOR`(데이터 CRUD, 권한관리 제외), `VIEWER`(조회 전용).
+- **관리자 화면**: 사이드바 **접근 권한 관리** 모듈에서 역할×메뉴 권한 매트릭스와 사용자(역할 배정·
+  비밀번호 재설정·활성화)를 관리합니다.
+- **백엔드**: `apps/api/src/{auth,permissions,admin}`. 테이블 접두사 `TMDM_`
+  (`TMDM_ROLE`/`TMDM_USER`/`TMDM_MENU`/`TMDM_ROLE_MENU_PERM`).
+- **인증 소스**: 현재 `local`(자체 계정 + bcrypt). 추후 그룹웨어 SSO로 교체 가능하도록 추상화됨.
+
+#### 초기 설정 (최초 1회)
+
+테이블 생성 + 기본 역할·메뉴·권한 + 초기 `admin` 계정을 시드합니다(멱등 — 재실행 안전).
+`ADMIN_PASSWORD`는 명령줄(우선) 또는 `apps/api/.env`에 지정합니다.
+
+```bash
+cd apps/api
+ADMIN_PASSWORD='강력한_비밀번호' node scripts/seed-auth.cjs
+```
+
+상세 환경변수·엔드포인트는 [apps/api/README.md](apps/api/README.md)의 "Auth & Access Control" 참고.
 
 ## 백엔드 작동 검증 현황
 

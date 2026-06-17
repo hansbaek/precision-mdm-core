@@ -203,13 +203,16 @@ export default function Header({ tabs, activeTab, setActiveTab, onOpenPalette }:
                 id="header-btn-help"
                 variant="ghost"
                 size="icon"
-                aria-label="도움말 (Help)"
+                aria-label={t('navbar.help')}
                 className="text-secondary"
+                onClick={() =>
+                  window.open('/help/manual.html', '_blank', 'noopener,noreferrer')
+                }
               >
                 <HelpCircle className="h-4.5 w-4.5" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent>도움말</TooltipContent>
+            <TooltipContent>{t('navbar.help')}</TooltipContent>
           </Tooltip>
         </div>
 

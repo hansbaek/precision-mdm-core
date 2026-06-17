@@ -200,8 +200,9 @@ export default function UsersAdminPage() {
                 <td className="px-4 py-2 text-secondary">{u.teamNm ?? '-'}</td>
                 <td className="px-4 py-2">
                   <select
-                    className={selectCls}
+                    className={`${selectCls} disabled:opacity-50 disabled:cursor-not-allowed`}
                     value={u.roleId}
+                    disabled={u.userId === 'admin'}
                     onChange={(e) => handleRoleChange(u, e.target.value)}
                   >
                     {roles.map((r) => (
@@ -213,11 +214,12 @@ export default function UsersAdminPage() {
                 </td>
                 <td className="px-4 py-2 text-center">
                   <button
-                    className={`px-2 py-0.5 rounded-full text-2xs font-bold ${
+                    className={`px-2 py-0.5 rounded-full text-2xs font-bold disabled:opacity-50 disabled:cursor-not-allowed ${
                       u.useYn === 'Y'
                         ? 'bg-emerald-100 text-emerald-700'
                         : 'bg-muted text-muted-foreground'
                     }`}
+                    disabled={u.userId === 'admin'}
                     onClick={() => handleToggleActive(u)}
                   >
                     {u.useYn === 'Y' ? t('admin.user.on') : t('admin.user.off')}

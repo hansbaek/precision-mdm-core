@@ -1,0 +1,345 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>T:MDM 사용 매뉴얼</title>
+<style>
+  :root {
+    --bg: #f7f8fa;
+    --card: #ffffff;
+    --fg: #1f2430;
+    --muted: #6b7280;
+    --border: #e5e7eb;
+    --accent: #f15a22;
+    --accent-soft: #fff1ea;
+    --code-bg: #f1f3f5;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0f1115; --card: #171a21; --fg: #e5e7eb; --muted: #9aa3b2;
+      --border: #2a2f3a; --accent: #ff7a4d; --accent-soft: #2a1b14; --code-bg: #1f242d;
+    }
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0; background: var(--bg); color: var(--fg);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Malgun Gothic",
+      "Apple SD Gothic Neo", Roboto, sans-serif;
+    line-height: 1.7; font-size: 15px;
+  }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 32px 20px 80px; }
+  header.doc {
+    border-bottom: 2px solid var(--accent); padding-bottom: 16px; margin-bottom: 28px;
+  }
+  header.doc .brand { color: var(--accent); font-weight: 800; letter-spacing: .12em;
+    font-size: 13px; text-transform: uppercase; }
+  header.doc h1 { margin: 6px 0 4px; font-size: 28px; font-weight: 800; }
+  header.doc p { margin: 0; color: var(--muted); font-size: 14px; }
+  nav.toc {
+    background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+    padding: 16px 20px; margin-bottom: 32px;
+  }
+  nav.toc strong { display:block; font-size: 13px; color: var(--muted);
+    text-transform: uppercase; letter-spacing: .08em; margin-bottom: 8px; }
+  nav.toc ol { margin: 0; padding-left: 20px; columns: 2; column-gap: 28px; }
+  nav.toc a { color: var(--fg); text-decoration: none; }
+  nav.toc a:hover { color: var(--accent); text-decoration: underline; }
+  section { background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+    padding: 24px 28px; margin-bottom: 22px; }
+  h2 { font-size: 20px; font-weight: 800; margin: 4px 0 14px; padding-bottom: 8px;
+    border-bottom: 1px solid var(--border); scroll-margin-top: 16px; }
+  h3 { font-size: 16px; font-weight: 700; margin: 22px 0 8px; }
+  h4 { font-size: 14px; font-weight: 700; margin: 16px 0 6px; color: var(--muted); }
+  p, li { margin: 6px 0; }
+  ul, ol { padding-left: 22px; }
+  code { background: var(--code-bg); padding: 2px 6px; border-radius: 6px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 13px; }
+  pre { background: var(--code-bg); padding: 14px 16px; border-radius: 10px; overflow:auto; }
+  pre code { background: none; padding: 0; }
+  table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 14px; }
+  th, td { border: 1px solid var(--border); padding: 8px 12px; text-align: left; vertical-align: top; }
+  th { background: var(--accent-soft); font-weight: 700; }
+  blockquote { margin: 14px 0; padding: 10px 16px; border-left: 3px solid var(--accent);
+    background: var(--accent-soft); border-radius: 0 8px 8px 0; color: var(--fg); }
+  blockquote p { margin: 4px 0; }
+  .ascii { white-space: pre; font-family: ui-monospace, Consolas, monospace; font-size: 12.5px;
+    background: var(--code-bg); padding: 14px; border-radius: 10px; overflow:auto; line-height: 1.45; }
+  .top { display:inline-block; margin-top: 8px; font-size: 12px; color: var(--muted); text-decoration:none; }
+  .top:hover { color: var(--accent); }
+  footer.doc { text-align:center; color: var(--muted); font-size: 13px; margin-top: 28px; }
+  @media print {
+    body { background:#fff; color:#000; font-size: 12px; }
+    nav.toc, .top { display:none; }
+    section { border:none; box-shadow:none; padding: 0; margin-bottom: 18px; break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="doc">
+    <div class="brand">Hankook Tire · R&amp;D Eng. MDM</div>
+    <h1>T:MDM 시스템 사용 매뉴얼</h1>
+    <p>R&amp;D 엔지니어링 마스터 데이터 관리 시스템 · 일반 사용자 및 관리자용</p>
+  </header>
+
+  <nav class="toc">
+    <strong>목차</strong>
+    <ol>
+      <li><a href="#s1">시스템 개요</a></li>
+      <li><a href="#s2">로그인 / 로그아웃</a></li>
+      <li><a href="#s3">화면 구성</a></li>
+      <li><a href="#s4">시험 항목 기준 마스터</a></li>
+      <li><a href="#s5">시험 분류 마스터</a></li>
+      <li><a href="#s6">접근 권한 관리(관리자)</a></li>
+      <li><a href="#s7">권한 시나리오 예시</a></li>
+      <li><a href="#s8">자주 묻는 질문</a></li>
+      <li><a href="#s9">운영자 참고</a></li>
+    </ol>
+  </nav>
+
+  <section id="s1">
+    <h2>1. 시스템 개요</h2>
+    <p>T:MDM은 타이어 시험 기준·분류 마스터 데이터를 관리하고, 제품코드(mcode) 기반으로
+      수행해야 할 시험을 조회하는 웹 애플리케이션입니다.</p>
+    <ul>
+      <li><strong>접속 방식</strong>: 웹 브라우저 (로그인 후 사용)</li>
+      <li><strong>인증</strong>: 아이디/비밀번호 로그인 (JWT 토큰 기반)</li>
+      <li><strong>접근 제어</strong>: 역할(Role) 기반으로 메뉴·기능 단위 권한을 제어</li>
+    </ul>
+    <h3>1.1 기본 주소</h3>
+    <table>
+      <tr><th>구분</th><th>주소</th></tr>
+      <tr><td>웹 화면 (개발)</td><td><code>http://localhost:3000</code></td></tr>
+      <tr><td>API 서버 (개발)</td><td><code>http://localhost:4000</code></td></tr>
+      <tr><td>API 문서 (Swagger)</td><td><code>http://localhost:4000/docs</code></td></tr>
+    </table>
+    <blockquote><p>운영 환경 주소는 시스템 관리자에게 문의하십시오.</p></blockquote>
+    <a class="top" href="#s1">↑ 목차로</a>
+  </section>
+
+  <section id="s2">
+    <h2>2. 로그인 / 로그아웃</h2>
+    <h3>2.1 로그인</h3>
+    <ol>
+      <li>브라우저에서 시스템 주소로 접속하면 <strong>로그인 화면</strong>(<code>/login</code>)으로 이동합니다.</li>
+      <li><strong>아이디</strong>와 <strong>비밀번호</strong>를 입력합니다.</li>
+      <li>(선택) <strong>아이디 저장</strong>을 체크하면 다음 접속 시 아이디가 자동 입력됩니다.</li>
+      <li><strong>로그인</strong> 버튼을 클릭합니다.</li>
+    </ol>
+    <p>로그인에 성공하면 본인에게 <strong>허용된 메뉴만</strong> 표시된 메인 화면으로 이동합니다.
+      아이디 또는 비밀번호가 틀리면 화면 하단에 오류 메시지가 표시됩니다.</p>
+
+    <h3>2.2 최초 관리자 계정</h3>
+    <p>시스템 최초 설치 시 기본 관리자 계정(<code>admin</code>)이 제공됩니다.
+      <strong>초기 비밀번호는 시스템 관리자(설치 담당자)에게 별도로 문의</strong>하십시오.</p>
+    <blockquote><p><strong>보안 주의</strong>: 최초 로그인 후, 관리자 화면에서 비밀번호를 반드시 변경(재설정)하십시오.</p></blockquote>
+
+    <h3>2.3 세션 유지</h3>
+    <ul>
+      <li>로그인 상태는 브라우저에 토큰으로 저장되어, 새로고침해도 유지됩니다.</li>
+      <li>토큰 유효기간(기본 8시간)이 지나면 자동으로 로그아웃되며 다시 로그인해야 합니다.</li>
+    </ul>
+
+    <h3>2.4 로그아웃</h3>
+    <p>화면 <strong>우측 상단의 사용자 영역(이름/이니셜)</strong>을 클릭하면 메뉴가 열립니다.
+      <strong>로그아웃</strong>을 선택하면 로그인 화면으로 돌아갑니다.</p>
+    <a class="top" href="#s1">↑ 목차로</a>
+  </section>
+
+  <section id="s3">
+    <h2>3. 화면 구성</h2>
+    <div class="ascii">┌──────────┬─────────────────────────────────────────────┐
+│          │  헤더: 탭 · 검색 · 알림 · 언어 · 테마 · 사용자  │
+│ 사이드바  ├─────────────────────────────────────────────┤
+│ (모듈)   │                                             │
+│          │              본문 (선택한 탭 화면)            │
+│          ├─────────────────────────────────────────────┤
+│          │  푸터: 저작권 · 약관                          │
+└──────────┴─────────────────────────────────────────────┘</div>
+
+    <h3>3.1 사이드바 (모듈)</h3>
+    <p>좌측 사이드바에는 <strong>본인에게 권한이 있는 모듈만</strong> 표시됩니다.</p>
+    <table>
+      <tr><th>모듈</th><th>설명</th></tr>
+      <tr><td>시험 항목 기준 마스터</td><td>시험 기준 템플릿 관리 · 필요시험조회 · 분석 · 보고서</td></tr>
+      <tr><td>시험 분류 마스터</td><td>시험 분류 체계 관리</td></tr>
+      <tr><td>재료 사양 / 차량 구성 / 데이터 감사</td><td>(준비 중)</td></tr>
+      <tr><td>접근 권한 관리</td><td>(관리자 전용) 역할·권한·사용자 관리</td></tr>
+    </table>
+    <ul>
+      <li>상단의 <strong>◀ / ▶</strong> 버튼으로 사이드바를 접거나 펼 수 있습니다.</li>
+      <li>모듈을 클릭하면 해당 모듈의 첫 번째 탭으로 이동합니다.</li>
+    </ul>
+
+    <h3>3.2 헤더</h3>
+    <ul>
+      <li><strong>탭</strong>: 현재 모듈에 속한 하위 탭. 권한이 있는 탭만 보입니다.</li>
+      <li><strong>검색(<code>Ctrl+K</code>)</strong>: 커맨드 팔레트로 항목·탭을 빠르게 이동.</li>
+      <li><strong>언어 토글</strong>: 한국어 ↔ English.</li>
+      <li><strong>테마 토글</strong>: 라이트 ↔ 다크 모드.</li>
+      <li><strong>도움말(?)</strong>: 본 매뉴얼을 새 탭으로 엽니다.</li>
+      <li><strong>사용자 영역</strong>: 이름·소속 표시, 클릭 시 로그아웃.</li>
+    </ul>
+    <a class="top" href="#s1">↑ 목차로</a>
+  </section>
+
+  <section id="s4">
+    <h2>4. 시험 항목 기준 마스터</h2>
+    <p><code>시험 항목 기준 마스터</code> 모듈은 4개의 탭으로 구성됩니다.</p>
+
+    <h3>4.1 기준정보 관리 (대시보드)</h3>
+    <p>시험 기준 템플릿(<code>TEMPLATE_STD_TEST_ITEM</code>)을 조회·관리합니다.</p>
+    <ul>
+      <li><strong>검색/필터</strong>: 제품라인·검색어·시장 코드로 필터링 후 <strong>검색</strong>. <strong>초기화</strong>로 조건 비우기.</li>
+      <li><strong>목록</strong>: 행 우측의 <strong>⋮</strong> 메뉴로 상세 보기/수정/삭제.</li>
+      <li><strong>추가</strong>: 상단 <strong>추가</strong> 버튼으로 신규 생성. <em>(생성 권한 필요)</em></li>
+      <li><strong>수정/삭제</strong>: 행 메뉴 또는 상세 화면에서 수행. <em>(각각 수정/삭제 권한 필요)</em></li>
+      <li><strong>Excel 다운로드</strong>: 현재 템플릿을 xlsx로 내려받기.</li>
+      <li><strong>Excel 업로드</strong>: xlsx 일괄 동기화(미리보기 → 적용). <em>(수정 권한 필요)</em></li>
+    </ul>
+    <blockquote><p><strong>권한에 따른 표시</strong>: 생성 권한이 없으면 <strong>추가</strong> 버튼이,
+      수정/삭제 권한이 없으면 해당 행 메뉴 항목이 보이지 않습니다.</p></blockquote>
+
+    <h3>4.2 필요시험 조회 (test-match)</h3>
+    <p>제품코드(<strong>mcode</strong>)를 입력하면 타이어 속성을 도출하여 수행해야 할 시험 목록을 표시합니다.
+      조회한 mcode는 보고서 탭과 공유됩니다.</p>
+
+    <h3>4.3 현황 분석 (Analytics)</h3>
+    <p>기준 마스터 데이터의 집계 통계를 지표로 확인합니다.</p>
+
+    <h3>4.4 보고서 (Reports)</h3>
+    <p>조회한 mcode 기준으로 보고서 형태의 결과를 확인합니다.</p>
+    <a class="top" href="#s1">↑ 목차로</a>
+  </section>
+
+  <section id="s5">
+    <h2>5. 시험 분류 마스터</h2>
+    <p><code>시험 분류 마스터</code> 모듈에서 시험 분류 체계를 조회·관리합니다.</p>
+    <a class="top" href="#s1">↑ 목차로</a>
+  </section>
+
+  <section id="s6">
+    <h2>6. 접근 권한 관리 (관리자 전용)</h2>
+    <p><code>접근 권한 관리</code> 모듈은 <strong>관리자 권한이 있는 사용자에게만</strong> 표시되며,
+      <strong>권한 설정</strong>과 <strong>사용자 관리</strong> 두 탭으로 구성됩니다.</p>
+
+    <h3>6.1 권한 체계 이해하기</h3>
+    <p>권한은 <strong>역할(Role)</strong> 단위로 부여되며, 각 사용자에게는 하나의 역할이 배정됩니다.</p>
+    <table>
+      <tr><th>메뉴 단계</th><th>예시</th></tr>
+      <tr><td>모듈</td><td>시험 항목 기준 마스터, 접근 권한 관리 …</td></tr>
+      <tr><td>탭</td><td>기준정보 관리, 필요시험조회, 현황분석, 보고서</td></tr>
+    </table>
+    <table>
+      <tr><th>액션</th><th>의미</th></tr>
+      <tr><td>조회(View)</td><td>메뉴를 보고 데이터를 조회</td></tr>
+      <tr><td>생성(Create)</td><td>신규 데이터 추가</td></tr>
+      <tr><td>수정(Update)</td><td>기존 데이터 수정 · Excel 업로드</td></tr>
+      <tr><td>삭제(Delete)</td><td>데이터 삭제</td></tr>
+    </table>
+    <blockquote><p><strong>조회 권한이 없는 메뉴는 사이드바/탭에 아예 표시되지 않습니다.</strong>
+      생성·수정·삭제 권한은 화면 내 버튼 표시 여부와 서버 처리 가능 여부를 함께 제어합니다.</p></blockquote>
+
+    <h3>6.2 기본 제공 역할</h3>
+    <table>
+      <tr><th>역할</th><th>설명</th><th>권한 요약</th></tr>
+      <tr><td><strong>ADMIN</strong> (관리자)</td><td>시스템 관리자</td><td>전 메뉴·전 액션 (접근 권한 관리 포함)</td></tr>
+      <tr><td><strong>EDITOR</strong> (편집자)</td><td>데이터 관리 담당</td><td>데이터 메뉴 조회·생성·수정·삭제 (권한 관리 제외)</td></tr>
+      <tr><td><strong>VIEWER</strong> (조회자)</td><td>열람 전용</td><td>데이터 메뉴 조회만</td></tr>
+    </table>
+    <blockquote><p>ADMIN은 <strong>시스템 역할</strong>로 보호되어 삭제할 수 없습니다.</p></blockquote>
+
+    <h3>6.3 권한 설정 (역할 × 메뉴 매트릭스)</h3>
+    <p><code>접근 권한 관리</code> → <strong>권한 설정</strong> 탭.</p>
+    <ol>
+      <li><strong>좌측 역할 목록</strong>에서 편집할 역할을 선택합니다.</li>
+      <li><strong>우측 매트릭스</strong>에서 메뉴별 <strong>조회/생성/수정/삭제</strong> 체크박스를 조정합니다.
+        (모듈 행과 들여쓰기된 탭 행으로 구성)</li>
+      <li><strong>저장</strong>을 클릭하면 즉시 반영됩니다. 변경 권한은 해당 사용자의
+        <strong>다음 동작/새로고침부터 바로 적용</strong>됩니다.</li>
+    </ol>
+    <h4>역할 추가 / 삭제</h4>
+    <ul>
+      <li><strong>추가</strong>: 좌측 하단에서 역할 ID(영문 대문자/숫자/밑줄)와 이름 입력 후 <strong>역할 추가</strong>.</li>
+      <li><strong>삭제</strong>: 역할의 휴지통 아이콘. 단, <strong>시스템 역할(ADMIN)</strong> 또는
+        <strong>사용 중인 역할</strong>(해당 역할 사용자가 있는 경우)은 삭제할 수 없습니다.</li>
+    </ul>
+
+    <h3>6.4 사용자 관리</h3>
+    <p><code>접근 권한 관리</code> → <strong>사용자 관리</strong> 탭.</p>
+    <ul>
+      <li><strong>사용자 생성</strong>: 상단 입력행에 아이디·이름·팀·초기 비밀번호 입력, 역할 선택 후 <strong>추가</strong>.</li>
+      <li><strong>역할 변경</strong>: 목록의 역할 드롭다운에서 선택 시 즉시 반영.</li>
+      <li><strong>사용 여부 토글</strong>: <code>사용</code>/<code>중지</code> 배지 클릭. 중지된 계정은 로그인 불가.</li>
+      <li><strong>비밀번호 재설정</strong>: 열쇠 아이콘 → 새 비밀번호 입력.</li>
+      <li><strong>삭제</strong>: 휴지통 아이콘. 기본 관리자(<code>admin</code>) 계정은 삭제 불가.</li>
+    </ul>
+    <a class="top" href="#s1">↑ 목차로</a>
+  </section>
+
+  <section id="s7">
+    <h2>7. 권한 시나리오 예시</h2>
+    <h4>예: 특정 팀에게 "기준정보 조회만" 허용하기</h4>
+    <ol>
+      <li><code>권한 설정</code>에서 <strong>역할 추가</strong> → 예: <code>QA_VIEW</code> / "QA 조회".</li>
+      <li>매트릭스에서 <code>시험 항목 기준 마스터</code>와 <code>기준정보 관리</code>의 <strong>조회</strong>만 체크 → <strong>저장</strong>.</li>
+      <li><code>사용자 관리</code>에서 사용자를 생성하고 역할을 <code>QA_VIEW</code>로 지정.</li>
+      <li>그 사용자는 로그인 시 <strong>기준정보 관리 탭만</strong> 보이고, 추가/수정/삭제 버튼은 표시되지 않습니다.</li>
+    </ol>
+    <a class="top" href="#s1">↑ 목차로</a>
+  </section>
+
+  <section id="s8">
+    <h2>8. 자주 묻는 질문 (FAQ)</h2>
+    <p><strong>Q. 로그인했는데 메뉴가 하나도 안 보입니다.</strong><br>
+      A. 배정된 역할에 조회 권한이 없는 상태입니다. 관리자에게 권한 부여를 요청하십시오.</p>
+    <p><strong>Q. 버튼(추가/수정/삭제)이 보이지 않습니다.</strong><br>
+      A. 해당 액션 권한이 없기 때문입니다. 조회만 가능한 역할일 수 있습니다.</p>
+    <p><strong>Q. 갑자기 로그아웃되었습니다.</strong><br>
+      A. 토큰 유효기간이 만료되었거나 계정이 비활성 처리되었을 수 있습니다. 다시 로그인하거나 관리자에게 문의하십시오.</p>
+    <p><strong>Q. 권한을 바꿨는데 사용자 화면에 반영이 안 됩니다.</strong><br>
+      A. 해당 사용자가 화면을 새로고침하면 즉시 반영됩니다.</p>
+    <a class="top" href="#s1">↑ 목차로</a>
+  </section>
+
+  <section id="s9">
+    <h2>9. 운영자(설치/관리) 참고</h2>
+    <blockquote><p>시스템 도입·운영 담당자를 위한 항목입니다. 일반 사용자는 건너뛰셔도 됩니다.</p></blockquote>
+
+    <h3>9.1 인증/권한 데이터 테이블</h3>
+    <p>인증·권한 정보는 다음 4개 테이블에 저장됩니다 (접두사 <code>TMDM_</code>).</p>
+    <table>
+      <tr><th>테이블</th><th>용도</th></tr>
+      <tr><td><code>TMDM_ROLE</code></td><td>역할 마스터</td></tr>
+      <tr><td><code>TMDM_USER</code></td><td>사용자 마스터 (비밀번호 bcrypt 해시)</td></tr>
+      <tr><td><code>TMDM_MENU</code></td><td>메뉴(모듈/탭) 카탈로그</td></tr>
+      <tr><td><code>TMDM_ROLE_MENU_PERM</code></td><td>역할 × 메뉴 권한 매트릭스</td></tr>
+    </table>
+
+    <h3>9.2 초기 시드</h3>
+    <p>설치 시 <code>ADMIN_PASSWORD</code> 환경변수로 <strong>초기 관리자 비밀번호를 직접 지정</strong>하십시오.
+      (지정하지 않으면 스크립트의 기본값이 사용되므로, 운영 환경에서는 반드시 지정하고 최초 로그인 후 변경하십시오.)</p>
+    <pre><code>cd apps/api
+ADMIN_PASSWORD='강력한_비밀번호' node scripts/seed-auth.cjs</code></pre>
+
+    <h3>9.3 환경 변수 (apps/api/.env)</h3>
+    <table>
+      <tr><th>변수</th><th>설명</th></tr>
+      <tr><td><code>JWT_SECRET</code></td><td>JWT 서명 비밀키 — 운영 환경에서는 반드시 강력한 무작위 값</td></tr>
+      <tr><td><code>JWT_EXPIRES_IN</code></td><td>토큰 유효기간 (기본 <code>8h</code>)</td></tr>
+      <tr><td><code>AUTH_PROVIDER</code></td><td>인증 소스: <code>local</code>(자체 계정) — 추후 <code>sso</code>(그룹웨어) 확장 예정</td></tr>
+    </table>
+
+    <h3>9.4 향후 확장 (SSO)</h3>
+    <p>현재 인증은 자체 계정(<code>local</code>) 방식이며, 그룹웨어 SSO 연동으로 교체할 수 있도록
+      인증 모듈이 추상화되어 있습니다. SSO 전환 시에도 역할·권한 체계와 관리자 화면은 그대로 사용합니다.</p>
+    <a class="top" href="#s1">↑ 목차로</a>
+  </section>
+
+  <footer class="doc">문의: 시스템 관리자 · T:MDM</footer>
+</div>
+</body>
+</html>

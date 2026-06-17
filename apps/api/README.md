@@ -1,6 +1,6 @@
-# HKRndMDM API
+# T:MDM API
 
-NestJS backend API for the HKRndMDM monorepo.
+NestJS backend API for the T:MDM monorepo.
 
 ## Stack
 
@@ -50,6 +50,13 @@ DB_PASSWORD=change_me
 
 DB_POOL_SIZE=10
 DB_LOGGING=false
+
+# Auth (JWT) — see "Auth & Access Control" below
+JWT_SECRET=change_me_to_a_long_random_secret
+JWT_EXPIRES_IN=8h
+AUTH_PROVIDER=local
+# ADMIN_PASSWORD is only read by scripts/seed-auth.cjs when creating the initial admin.
+# ADMIN_PASSWORD=change_me_strong_password
 ```
 
 Supported Oracle connection styles:
@@ -69,6 +76,38 @@ synchronize: false
 ```
 
 Do not enable automatic schema synchronization for shared or production Oracle databases. Use migrations for schema changes.
+
+## Auth & Access Control (RBAC)
+
+Authentication is JWT-based. Access is controlled per **menu × action** via roles.
+
+**Env variables**
+
+| Variable | Purpose |
+| --- | --- |
+| `JWT_SECRET` | JWT signing secret — **use a long random value in production** |
+| `JWT_EXPIRES_IN` | Token lifetime (default `8h`) |
+| `AUTH_PROVIDER` | Auth source: `local` (TMDM_USER + bcrypt). Abstracted for future `sso`. |
+| `ADMIN_PASSWORD` | Initial admin password — **only** used by the seed script when first creating `admin`. |
+
+**Tables** (prefix `TMDM_`): `TMDM_ROLE`, `TMDM_USER`, `TMDM_MENU`, `TMDM_ROLE_MENU_PERM`.
+
+**Permission model**: each role gets `view / create / update / delete` flags per menu
+(module or tab). A menu with no `view` is hidden from that role; mutating endpoints are
+guarded by `@RequirePermission(menuId, action)`. Default roles: `ADMIN` (full), `EDITOR`
+(data CRUD, no admin), `VIEWER` (read-only).
+
+**Initial setup** — create tables + seed roles/menus/permissions + the first admin
+(idempotent; re-running is safe). `ADMIN_PASSWORD` may be passed on the command line
+(takes precedence) or set in `.env`:
+
+```bash
+cd apps/api
+ADMIN_PASSWORD='strong_password' node scripts/seed-auth.cjs
+```
+
+After first login, change the admin password via the in-app **Access Control → Users**
+screen. Do not commit real passwords; the seed script has no default password.
 
 ## Commands
 
@@ -101,10 +140,15 @@ Default port:
 Endpoints:
 
 ```text
-GET /         # default Nest sample endpoint
-GET /health  # Terminus health check, includes database ping
-GET /docs    # Swagger UI
+GET  /                # default Nest sample endpoint (public)
+GET  /health          # Terminus health check, includes database ping (public)
+GET  /docs            # Swagger UI
+POST /auth/signin     # login → JWT + profile + permitted menus (public)
+GET  /auth/me         # current profile + permitted menus (JWT)
+*    /admin/*         # roles / menus / permissions / users (admin permission)
 ```
+
+All other endpoints require a valid JWT (global guard); routes marked `(public)` are exempt via `@Public()`.
 
 ## Verification Status
 

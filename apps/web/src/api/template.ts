@@ -1,15 +1,17 @@
-import { BASE_URL, axiosInstance } from './index';
+import { axiosInstance, fileTimestamp } from './index';
 import type { StdStats, StdTestItem } from '@/types';
 
 export const downloadTemplateXlsx = async (): Promise<void> => {
-  const response = await fetch(`${BASE_URL}/template/download`);
-  if (!response.ok) throw new Error('Template download failed');
+  // axiosInstance 를 사용해 JWT 토큰을 자동 첨부(전역 인증 가드 통과).
+  const response = await axiosInstance.get('/template/download', {
+    responseType: 'blob',
+  });
 
-  const blob = await response.blob();
+  const blob = response.data as Blob;
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
-  link.download = 'TEMPLATE_STD_TEST_ITEM.xlsx';
+  link.download = `TEMPLATE_STD_TEST_ITEM_${fileTimestamp()}.xlsx`;
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);

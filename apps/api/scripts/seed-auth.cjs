@@ -4,8 +4,9 @@
  * 기본 역할(ADMIN/EDITOR/VIEWER), 메뉴 카탈로그(사이드바 모듈+탭),
  * 역할별 권한 매트릭스, 초기 admin 사용자를 적재한다.
  *
- * 실행: node scripts/seed-auth.cjs   (apps/api 에서, .env 필요)
- * 초기 admin 비밀번호: 환경변수 ADMIN_PASSWORD (기본 'admin123!')
+ * 실행: ADMIN_PASSWORD='강력한_비밀번호' node scripts/seed-auth.cjs   (apps/api 에서, .env 필요)
+ * 초기 admin 비밀번호: 환경변수 ADMIN_PASSWORD 또는 .env 의 ADMIN_PASSWORD
+ *   (둘 다 없으면 admin 신규 생성 시 에러. 명령줄 값이 .env 보다 우선.)
  */
 const fs = require('fs');
 const path = require('path');
@@ -18,7 +19,9 @@ for (const line of fs.readFileSync(path.join(__dirname, '..', '.env'), 'utf8').s
   if (m) env[m[1]] = m[2].trim();
 }
 
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123!';
+// 명령줄 환경변수 우선, 없으면 .env 의 ADMIN_PASSWORD. 기본값은 없다.
+// (admin 신규 생성이 필요한 경우에만 필수 — 아래에서 검사.)
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || env.ADMIN_PASSWORD;
 
 // [MENU_ID, PARENT_ID, MENU_TYPE, MENU_NM, I18N_KEY, SORT_ORDER]
 const MENUS = [
@@ -186,6 +189,13 @@ const yn = (b) => (b ? 'Y' : 'N');
       `SELECT COUNT(*) FROM TMDM_USER WHERE USER_ID = 'admin'`,
     );
     if (adminExists.rows[0][0] === 0) {
+      if (!ADMIN_PASSWORD) {
+        throw new Error(
+          "admin 계정을 생성하려면 ADMIN_PASSWORD 가 필요합니다. " +
+            "명령줄(ADMIN_PASSWORD='강력한_비밀번호' node scripts/seed-auth.cjs) 또는 " +
+            "apps/api/.env 에 ADMIN_PASSWORD=... 로 지정하십시오.",
+        );
+      }
       const hash = bcrypt.hashSync(ADMIN_PASSWORD, 10);
       await conn.execute(
         `INSERT INTO TMDM_USER
@@ -193,7 +203,8 @@ const yn = (b) => (b ? 'Y' : 'N');
          VALUES ('admin', '관리자', 'Administrator', '시스템', 'System', :hash, 'LOCAL', 'ADMIN', 'Y')`,
         { hash },
       );
-      console.log(`admin 사용자 생성 (비밀번호: ${ADMIN_PASSWORD})`);
+      // 보안상 비밀번호는 출력하지 않는다.
+      console.log('admin 사용자 생성 완료 (비밀번호는 ADMIN_PASSWORD 로 설정됨)');
     } else {
       console.log('admin 사용자: 이미 존재 — 스킵');
     }

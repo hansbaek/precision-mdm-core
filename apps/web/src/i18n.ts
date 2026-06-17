@@ -92,6 +92,7 @@ i18n
             },
           },
           navbar: {
+            help: "Help",
             profile: {
               userProfile: "User Profile",
               name: "Name",
@@ -360,6 +361,7 @@ i18n
             },
           },
           navbar: {
+            help: "도움말",
             profile: {
               userProfile: "사용자 정보",
               name: "이름",

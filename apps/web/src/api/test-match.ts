@@ -1,4 +1,4 @@
-import { BASE_URL, axiosInstance } from './index';
+import { axiosInstance, fileTimestamp } from './index';
 
 export interface ResolvedMarket {
   /** 매칭에 사용된 38 마켓코드 셋 */
@@ -74,15 +74,16 @@ export const matchTests = (mcode: string): Promise<MatchResult> =>
 
 /** 필요시험 보고서 xlsx 다운로드 */
 export const exportTestMatchXlsx = async (mcode: string): Promise<void> => {
-  const res = await fetch(
-    `${BASE_URL}/test-match/export?mcode=${encodeURIComponent(mcode)}`,
-  );
-  if (!res.ok) throw new Error('Excel export failed');
-  const blob = await res.blob();
+  // axiosInstance 로 JWT 토큰 자동 첨부(전역 인증 가드 통과).
+  const res = await axiosInstance.get('/test-match/export', {
+    params: { mcode },
+    responseType: 'blob',
+  });
+  const blob = res.data as Blob;
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `test-match-${mcode}.xlsx`;
+  a.download = `test-match-${mcode}_${fileTimestamp()}.xlsx`;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);

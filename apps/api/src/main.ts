@@ -18,8 +18,8 @@ async function bootstrap() {
   );
 
   const swaggerConfig = new DocumentBuilder()
-    .setTitle('HKRndMDM API')
-    .setDescription('HKRndMDM backend API')
+    .setTitle('T:MDM API')
+    .setDescription('T:MDM backend API')
     .setVersion('0.1.0')
     .addBearerAuth()
     .build();
