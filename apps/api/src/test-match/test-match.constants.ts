@@ -104,12 +104,12 @@ export const MARKET_38 = new Set<string>([
 /**
  * 현재 타이어 소스에서 평가 불가한 조건 컬럼 (값이 있으면 "미평가" 경고로 표기, 행은 포함).
  *  - TEMP_TIRE / UTQG / NEW_SIZE_YN / TBR_GRV_3: 소스 추후 추가 예정
- *  - SIZE_SMPL: 특정 사이즈 샘플 지정(필터 아닌 샘플링 지시) → 매칭 제외
+ *
+ * (SIZE_SMPL은 DW_SPEC_PLM_TIRE.SIZE_SMPL을 타이어 규격으로 사용해 정식 매칭 조건으로 승격됨.)
  */
 export const DEFERRED_FILTER_COLS = [
   'TEMP_TIRE',
   'UTQG',
   'NEW_SIZE_YN',
   'TBR_GRV_3',
-  'SIZE_SMPL',
 ] as const;

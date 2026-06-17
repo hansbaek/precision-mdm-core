@@ -25,6 +25,8 @@ export interface TireAttrs {
   mainMarket: string | null;
   market: ResolvedMarket;
   tireSize: string | null;
+  /** PLM 스펙 기준 정규화 규격(예: 11R22.5) — SIZE_SMPL 매칭용. DW_SPEC_PLM_TIRE. */
+  sizeSmpl: string | null;
   rimInch: number | null;
   ss: string | null;
   li: number | null;
@@ -100,7 +102,10 @@ SELECT
   CASE WHEN REGEXP_LIKE(m.SIZE_DESCRIPTION,'[0-9]R[0-9]') THEN 'R'
        WHEN REGEXP_LIKE(m.SIZE_DESCRIPTION,'[0-9]B[0-9]') THEN 'B'
        WHEN REGEXP_LIKE(m.SIZE_DESCRIPTION,'[0-9]-[0-9]') THEN 'B' ELSE NULL END radial_bias,
-  CASE WHEN md.THREE_PMSF='Y' OR INSTR(m.PATTERN,'W')>0 THEN 'Y' END winter
+  CASE WHEN md.THREE_PMSF='Y' OR INSTR(m.PATTERN,'W')>0 THEN 'Y' END winter,
+  (SELECT MAX(s.SIZE_SMPL) KEEP (
+            DENSE_RANK FIRST ORDER BY CASE WHEN s.SPEC_STATE='Release' THEN 0 ELSE 1 END)
+     FROM DW_SPEC_PLM_TIRE s WHERE s.PRODUCT_CODE = m.MCODE) size_smpl
 FROM V_MCODE_INFO_4_HINT m
 LEFT JOIN V_PIC_MATTR_MDPT_INFO_4_HINT md ON m.MCODE=md.MCODE
 LEFT JOIN DRW_PARAM_INFO p ON m.MCODE=p.PRODUCTCODE
@@ -126,6 +131,20 @@ export class TestMatchService {
     const n = Number(s);
     return Number.isNaN(n) ? null : n;
   }
+  /**
+   * 규격 문자열을 SIZE_SMPL 정규형으로 추출.
+   * (접두 'P', 뒤따르는 속도기호/'XL'/'RD'/공백 등을 버리고 핵심 규격만)
+   *   'P385/65R22.5' → '385/65R22.5', '275/70R22.5   RD' → '275/70R22.5',
+   *   '255/45R18Y XL' → '255/45R18', '1000R20' → '1000R20'
+   * 매칭 불가 시 null.
+   */
+  private normalizeSize(desc: string | null): string | null {
+    const s = this.str(desc);
+    if (s === '') return null;
+    const m = s.match(/\d+(?:\.\d+)?(?:\/\d+)?[RB]\d+(?:\.\d+)?/);
+    return m ? m[0] : null;
+  }
+
   /** 38코드 토큰화 ('1'→K1, 38코드만 유지). */
   private tokens38(csv: unknown): string[] {
     return this.str(csv)
@@ -212,6 +231,9 @@ export class TestMatchService {
       mainMarket,
       market,
       tireSize: first('TIRESIZE'),
+      // 규격: PLM 스펙(DW_SPEC_PLM_TIRE.SIZE_SMPL) 우선, 스펙 미등재(NO_SPEC) 시
+      // SIZE_DESCRIPTION 정규화로 폴백 — 둘 다 없으면 null(미평가 유지).
+      sizeSmpl: first('SIZE_SMPL') ?? this.normalizeSize(first('TIRESIZE')),
       rimInch: firstNum('RIM_INCH'),
       ss: first('SS'),
       li: firstNum('LI'),
@@ -457,6 +479,13 @@ export class TestMatchService {
           tireVal: tire.radialBias ?? '',
           verdict: this.evalCsvMember(r['RADIAL_BIAS'], tire.radialBias),
         },
+        {
+          // 규격 샘플: 템플릿 SIZE_SMPL(콤마 목록)에 타이어 규격(DW_SPEC_PLM_TIRE)이 포함되면 pass.
+          col: 'SIZE_SMPL',
+          tmpl: this.str(r['SIZE_SMPL']),
+          tireVal: tire.sizeSmpl ?? '',
+          verdict: this.evalCsvMember(r['SIZE_SMPL'], tire.sizeSmpl),
+        },
       ];
       if (specs.some((s) => s.verdict === 'fail')) continue;
 
@@ -506,8 +535,7 @@ export class TestMatchService {
         unevaluatedDetail.push({
           col,
           templateValue: tmpl,
-          reason:
-            col === 'SIZE_SMPL' ? '샘플 지정(필터 아님)' : '소스 미연결(보류)',
+          reason: '소스 미연결(보류)',
         });
       }
 
