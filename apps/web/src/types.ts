@@ -47,7 +47,10 @@ export interface UserPreferences {
 
 /** 로그인 성공 응답. */
 export interface AuthSession {
+  /** 단기 액세스 토큰(JWT). */
   token: string;
+  /** 장기 리프레시 토큰. 갱신마다 회전된다. */
+  refreshToken: string;
   profile: UserProfile;
   menus: MenuPermission[];
   preferences: UserPreferences | null;

@@ -50,7 +50,13 @@ const audit = { CREATED_AT: '20240101', CREATED_BY: 'sys' };
 describe('TemplateUploadService.preview (diff 엔진)', () => {
   it('INSERT/UPDATE/DELETE/UNCHANGED 를 정확히 분류한다', async () => {
     const dbRows: RowObj[] = [
-      { TMPLT_ID: 1, PRODUCT_LINE: 'PCR', TEST_ITEM_NAME: 'A', F1: 1, ...audit },
+      {
+        TMPLT_ID: 1,
+        PRODUCT_LINE: 'PCR',
+        TEST_ITEM_NAME: 'A',
+        F1: 1,
+        ...audit,
+      },
       { TMPLT_ID: 2, PRODUCT_LINE: 'PCR', TEST_ITEM_NAME: 'B', ...audit },
       { TMPLT_ID: 3, PRODUCT_LINE: 'TBR', TEST_ITEM_NAME: 'C', ...audit },
     ];
@@ -82,12 +88,25 @@ describe('TemplateUploadService.preview (diff 엔진)', () => {
 
   it('시장 플래그(Y==1)·숫자(17.50==17.5) 동치는 변경으로 보지 않는다', async () => {
     const dbRows: RowObj[] = [
-      { TMPLT_ID: 1, PRODUCT_LINE: 'PCR', TEST_ITEM_NAME: 'A', GRV_DEPTH: 17.5, F1: 1, ...audit },
+      {
+        TMPLT_ID: 1,
+        PRODUCT_LINE: 'PCR',
+        TEST_ITEM_NAME: 'A',
+        GRV_DEPTH: 17.5,
+        F1: 1,
+        ...audit,
+      },
     ];
     const service = makeService(dbRows);
 
     const buffer = await buildXlsx([
-      { TMPLT_ID: 1, PRODUCT_LINE: 'PCR', TEST_ITEM_NAME: 'A', GRV_DEPTH: '17.50', F1: 'Y' },
+      {
+        TMPLT_ID: 1,
+        PRODUCT_LINE: 'PCR',
+        TEST_ITEM_NAME: 'A',
+        GRV_DEPTH: '17.50',
+        F1: 'Y',
+      },
     ]);
 
     const res = await service.preview(buffer);

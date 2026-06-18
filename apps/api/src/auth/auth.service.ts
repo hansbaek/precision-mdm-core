@@ -7,11 +7,9 @@ import { PermissionsService } from '../permissions/permissions.service';
 import { MenuPermission } from '../permissions/permissions.types';
 import { UserEntity } from './entities/user.entity';
 import { JwtPayload } from './jwt.strategy';
+import { RefreshTokensService } from './refresh-tokens.service';
 import { AUTH_PROVIDER_TOKEN } from './providers/auth-provider.interface';
-import type {
-  AuthProvider,
-  AuthenticatedUser,
-} from './providers/auth-provider.interface';
+import type { AuthProvider } from './providers/auth-provider.interface';
 
 /** 프런트 UserProfile 과 일치하는 프로필 형태. */
 export interface UserProfile {
@@ -34,7 +32,10 @@ export interface UserPreferences {
 }
 
 export interface AuthSession {
+  /** 단기 액세스 토큰(JWT). */
   token: string;
+  /** 장기 리프레시 토큰 원문(`${tokenId}.${secret}`). 갱신마다 회전된다. */
+  refreshToken: string;
   profile: UserProfile;
   menus: MenuPermission[];
   preferences: UserPreferences | null;
@@ -47,19 +48,46 @@ export class AuthService {
     private readonly authProvider: AuthProvider,
     private readonly jwt: JwtService,
     private readonly permissions: PermissionsService,
+    private readonly refreshTokens: RefreshTokensService,
     @InjectRepository(UserEntity)
     private readonly userRepo: Repository<UserEntity>,
   ) {}
 
   /** 인증 실패 시 null (컨트롤러가 200 + ok:false 로 응답 — 전역 401 리다이렉트 회피). */
-  async signIn(userId: string, password: string): Promise<AuthSession | null> {
-    const user = await this.authProvider.authenticate(userId, password);
-    if (!user) return null;
-    return this.buildSession(user);
+  async signIn(
+    userId: string,
+    password: string,
+    userAgent?: string,
+  ): Promise<AuthSession | null> {
+    const authed = await this.authProvider.authenticate(userId, password);
+    if (!authed) return null;
+    return this.buildSession(authed.userId, userAgent);
+  }
+
+  /**
+   * 리프레시 토큰으로 세션 갱신. 토큰을 회전(이전 토큰 폐기 + 새 토큰 발급)하고
+   * 최신 프로필/권한으로 새 액세스 토큰을 발급한다. 실패는 401.
+   */
+  async refresh(
+    presentedRefreshToken: string,
+    userAgent?: string,
+  ): Promise<AuthSession> {
+    const { userId, refresh } = await this.refreshTokens.rotate(
+      presentedRefreshToken,
+      userAgent,
+    );
+    return this.buildSession(userId, userAgent, refresh.token);
+  }
+
+  /** 로그아웃: 제출된 리프레시 토큰을 폐기한다. */
+  async logout(presentedRefreshToken: string): Promise<void> {
+    await this.refreshTokens.revoke(presentedRefreshToken);
   }
 
   /** 토큰 검증 후 최신 프로필/권한 재조회 (역할 변경 즉시 반영). */
-  async me(userId: string): Promise<Omit<AuthSession, 'token'>> {
+  async me(
+    userId: string,
+  ): Promise<Omit<AuthSession, 'token' | 'refreshToken'>> {
     const user = await this.userRepo.findOne({
       where: { userId, useYn: 'Y' },
     });
@@ -128,28 +156,32 @@ export class AuthService {
     return null;
   }
 
-  private async buildSession(user: AuthenticatedUser): Promise<AuthSession> {
-    const payload: JwtPayload = { sub: user.userId, role: user.roleId };
+  /**
+   * 사용자 ID 로 세션을 구성한다. 항상 최신 UserEntity 를 읽어 프로필/권한/
+   * 환경설정을 반영한다(역할 변경 즉시 반영). existingRefresh 가 주어지면
+   * (refresh 경로) 회전된 토큰을 그대로 싣고, 없으면(signin) 새로 발급한다.
+   */
+  private async buildSession(
+    userId: string,
+    userAgent?: string,
+    existingRefresh?: string,
+  ): Promise<AuthSession> {
+    const user = await this.userRepo.findOne({ where: { userId, useYn: 'Y' } });
+    if (!user) {
+      throw new UnauthorizedException('사용자를 찾을 수 없습니다.');
+    }
+    const payload: JwtPayload = { sub: user.userId, role: user.roleId ?? '' };
     const token = await this.jwt.signAsync(payload);
     const menus = await this.permissions.getVisibleMenus(user.roleId);
-    const profile: UserProfile = {
-      userId: user.userId,
-      userName: user.userNm ?? '',
-      userNameEng: user.userNmEng ?? '',
-      teamName: user.teamNm ?? '',
-      teamNameEng: user.teamNmEng ?? '',
-      role: user.roleId ?? '',
-    };
-    // 로그인 응답에도 저장된 환경설정을 실어 첫 화면부터 반영.
-    const stored = await this.userRepo.findOne({
-      where: { userId: user.userId },
-      select: { userId: true, preferences: true },
-    });
+    const refreshToken =
+      existingRefresh ??
+      (await this.refreshTokens.issue(user.userId, userAgent)).token;
     return {
       token,
-      profile,
+      refreshToken,
+      profile: this.toProfile(user),
       menus,
-      preferences: this.parsePreferences(stored?.preferences ?? null),
+      preferences: this.parsePreferences(user.preferences),
     };
   }
 

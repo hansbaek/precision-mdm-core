@@ -84,9 +84,20 @@ class EnvironmentVariables {
   @IsString()
   JWT_SECRET!: string;
 
+  /** @deprecated JWT_ACCESS_EXPIRES_IN 사용. 호환을 위해 유지. */
   @IsString()
   @IsOptional()
   JWT_EXPIRES_IN?: string;
+
+  /** 액세스 토큰 수명(예: 15m). 미설정 시 15분. */
+  @IsString()
+  @IsOptional()
+  JWT_ACCESS_EXPIRES_IN?: string;
+
+  /** 리프레시 토큰 수명(예: 14d). 미설정 시 14일. */
+  @IsString()
+  @IsOptional()
+  JWT_REFRESH_EXPIRES_IN?: string;
 
   @IsEnum(AuthProviderKind)
   @IsOptional()

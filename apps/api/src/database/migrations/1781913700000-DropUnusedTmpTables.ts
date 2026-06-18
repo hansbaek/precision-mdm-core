@@ -16,10 +16,10 @@ export class DropUnusedTmpTables1781913700000 implements MigrationInterface {
 
   public async up(q: QueryRunner): Promise<void> {
     for (const name of this.tables) {
-      const rows: Array<{ CNT: number }> = await q.query(
+      const rows = (await q.query(
         `SELECT COUNT(*) AS CNT FROM USER_TABLES WHERE TABLE_NAME = :1`,
         [name],
-      );
+      )) as Array<{ CNT: number }>;
       const cnt =
         rows?.[0]?.CNT ?? (rows?.[0] as unknown as number[])?.[0] ?? 0;
       if (Number(cnt) > 0) {

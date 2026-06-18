@@ -31,3 +31,9 @@ export const changePassword = (data: {
   newPassword: string;
 }): Promise<CommonReturnType<null>> =>
   axiosInstance.post('/auth/password', data).then((res) => res.data);
+
+/** 리프레시 토큰 회전. 서버 폐기를 위해 로그아웃 시 호출. */
+export const logout = (
+  refreshToken: string,
+): Promise<CommonReturnType<null>> =>
+  axiosInstance.post('/auth/logout', { refreshToken }).then((res) => res.data);

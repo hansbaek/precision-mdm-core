@@ -6,10 +6,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { RoleMenuPermEntity } from '../permissions/entities/role-menu-perm.entity';
 import { PermissionsService } from '../permissions/permissions.service';
 import { TemplateService } from '../template/template.service';
-import {
-  ChangeRequestsService,
-  STD_MENU,
-} from './change-requests.service';
+import { ChangeRequestsService, STD_MENU } from './change-requests.service';
 import { ChangeRequestEntity } from './entities/change-request.entity';
 
 const USER: JwtUser = { userId: 'u-req', role: 'EDITOR' };
@@ -17,7 +14,12 @@ const APPROVER: JwtUser = { userId: 'u-app', role: 'ADMIN' };
 
 describe('ChangeRequestsService', () => {
   let service: ChangeRequestsService;
-  let crRepo: { create: jest.Mock; save: jest.Mock; find: jest.Mock; findOne: jest.Mock };
+  let crRepo: {
+    create: jest.Mock;
+    save: jest.Mock;
+    find: jest.Mock;
+    findOne: jest.Mock;
+  };
   let userRepo: { find: jest.Mock };
   let permRepo: { find: jest.Mock };
   let permissions: { can: jest.Mock };

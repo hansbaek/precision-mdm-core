@@ -18,7 +18,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useTheme } from '@/components/theme/use-theme';
 import { useUserProfile } from '@/hooks/use-user-profile';
-import { clearSession } from '@/hooks/use-session';
+import { signOut } from '@/hooks/use-session';
 
 interface HeaderProps {
   /** 활성 모듈의 종속 탭 목록 (빈 배열이면 탭 바 숨김). */
@@ -40,8 +40,8 @@ export default function Header({ tabs, activeTab, setActiveTab, onOpenPalette }:
   const displayName = (isEnLang ? profile.userNameEng : profile.userName) || profile.userId || '-';
   const initials = (displayName || '?').trim().slice(0, 2).toUpperCase();
 
-  const handleLogout = () => {
-    clearSession();
+  const handleLogout = async () => {
+    await signOut();
     navigate('/login', { replace: true });
   };
 

@@ -4,7 +4,10 @@ import { PermissionsGuard } from './permissions.guard';
 import { PermissionsService } from './permissions.service';
 
 /** ExecutionContext 더블: 핸들러/클래스와 request.user 만 제공한다. */
-function makeContext(user?: { userId: string; role: string }): ExecutionContext {
+function makeContext(user?: {
+  userId: string;
+  role: string;
+}): ExecutionContext {
   return {
     getHandler: () => ({}),
     getClass: () => ({}),

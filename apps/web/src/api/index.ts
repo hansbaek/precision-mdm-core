@@ -1,5 +1,5 @@
 import axios from "axios";
-import { LOCALSTORAGE_TOKEN } from "@/constants";
+import { LOCALSTORAGE_REFRESH_TOKEN, LOCALSTORAGE_TOKEN } from "@/constants";
 import { toast } from "sonner";
 import { type UserProfile } from "@/types";
 
@@ -29,20 +29,81 @@ axiosInstance.interceptors.request.use((config) => {
   return config;
 });
 
-// 공통 Response 및 Error 처리
+// refresh 를 거치면 안 되는 인증 엔드포인트(재귀/무한루프 방지).
+const AUTH_PATHS = ["/auth/refresh", "/auth/signin", "/auth/logout"];
+const isAuthPath = (url?: string) =>
+  !!url && AUTH_PATHS.some((p) => url.includes(p));
+
+// 동시에 여러 요청이 401 이어도 refresh 는 한 번만 수행한다(single-flight).
+let refreshing: Promise<string | null> | null = null;
+
+/** 리프레시 토큰으로 액세스 토큰 갱신. 성공 시 새 액세스 토큰, 실패 시 null. */
+async function refreshAccessToken(): Promise<string | null> {
+  const refreshToken = localStorage.getItem(LOCALSTORAGE_REFRESH_TOKEN);
+  if (!refreshToken) return null;
+  try {
+    // 인터셉터 재귀를 피하기 위해 기본 axios 로 호출한다.
+    const res = await axios.post(`${BASE_URL}/auth/refresh`, { refreshToken });
+    const data = res.data as CommonReturnType<{
+      token: string;
+      refreshToken: string;
+    }>;
+    if (data?.ok && data.result) {
+      localStorage.setItem(LOCALSTORAGE_TOKEN, data.result.token);
+      localStorage.setItem(LOCALSTORAGE_REFRESH_TOKEN, data.result.refreshToken);
+      return data.result.token;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+/** 세션 강제 종료 → 로그인 화면으로. */
+function forceLogout() {
+  localStorage.removeItem(LOCALSTORAGE_TOKEN);
+  localStorage.removeItem(LOCALSTORAGE_REFRESH_TOKEN);
+  toast.error("세션이 만료되었습니다. 다시 로그인해 주세요.", {
+    duration: 900,
+    onAutoClose: () => {
+      document.location.href = "/login";
+    },
+  });
+}
+
+// 공통 Response 및 Error 처리: 401 시 refresh 1회 시도 후 원요청 재시도.
 axiosInstance.interceptors.response.use(
   (response) => response,
-  (error) => {
-    if (error.response) {
-      if (error.response.status && error.response.status === 401) {
-        toast.error("Invalid login token", {
-          duration: 700,
-          onAutoClose: () => {
-            localStorage.removeItem(LOCALSTORAGE_TOKEN);
-            document.location.href = "/";
-          },
+  async (error) => {
+    const status = error.response?.status as number | undefined;
+    const original = error.config as
+      | (typeof error.config & { _retry?: boolean })
+      | undefined;
+
+    if (
+      status === 401 &&
+      original &&
+      !original._retry &&
+      !isAuthPath(original.url)
+    ) {
+      original._retry = true;
+      if (!refreshing) {
+        refreshing = refreshAccessToken().finally(() => {
+          refreshing = null;
         });
       }
+      const newToken = await refreshing;
+      if (newToken) {
+        // 재요청 시 request 인터셉터가 갱신된 토큰을 다시 부착한다.
+        return axiosInstance(original);
+      }
+      forceLogout();
+      return Promise.reject(error);
+    }
+
+    // refresh 자체 실패 또는 재시도 후에도 401 → 세션 종료.
+    if (status === 401) {
+      forceLogout();
     }
 
     return Promise.reject(error);

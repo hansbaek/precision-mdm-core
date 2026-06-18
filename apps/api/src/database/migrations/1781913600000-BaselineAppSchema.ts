@@ -226,7 +226,12 @@ export class BaselineAppSchema1781913600000 implements MigrationInterface {
   public async down(q: QueryRunner): Promise<void> {
     // ⚠️ 앱 스키마와 데이터를 전부 제거한다. 신규 DB 롤백 용도로만 사용할 것.
     if (
-      await this.exists(q, 'USER_SEQUENCES', 'SEQUENCE_NAME', this.sequence.name)
+      await this.exists(
+        q,
+        'USER_SEQUENCES',
+        'SEQUENCE_NAME',
+        this.sequence.name,
+      )
     ) {
       await q.query(`DROP SEQUENCE ${this.sequence.name}`);
     }
@@ -245,10 +250,10 @@ export class BaselineAppSchema1781913600000 implements MigrationInterface {
     column: string,
     name: string,
   ): Promise<boolean> {
-    const rows: Array<{ CNT: number }> = await q.query(
+    const rows = (await q.query(
       `SELECT COUNT(*) AS CNT FROM ${view} WHERE ${column} = :1`,
       [name],
-    );
+    )) as Array<{ CNT: number }>;
     const cnt = rows?.[0]?.CNT ?? (rows?.[0] as unknown as number[])?.[0] ?? 0;
     return Number(cnt) > 0;
   }

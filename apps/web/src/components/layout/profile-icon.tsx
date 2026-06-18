@@ -3,8 +3,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import { LogOutIcon, UserIcon } from "lucide-react";
 import { Label } from "../ui/label";
 import { Button } from "../ui/button";
-import { useAuthStore } from "@/hooks/use-auth-store";
 import { useUserProfile } from "@/hooks/use-user-profile";
+import { signOut } from "@/hooks/use-session";
 
 const languages = {
   en: { nativeName: "English" },
@@ -16,10 +16,9 @@ type languageKeys = keyof typeof languages;
 const ProfileIcon = () => {
   const { t, i18n } = useTranslation();
 
-  const logout = useAuthStore((state) => state.logout);
   const userProfile = useUserProfile((state) => state.userProfile);
   const handleClickLogout = () => {
-    logout();
+    void signOut();
   };
 
   return (
