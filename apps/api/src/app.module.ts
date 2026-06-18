@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -31,6 +32,8 @@ import { TestMatchModule } from './test-match/test-match.module';
       inject: [ConfigService],
       useFactory: getOracleTypeOrmOptions,
     }),
+    // 전역 기본 한도: IP 당 60초 100회. 로그인 등 민감 엔드포인트는 @Throttle 로 강화.
+    ThrottlerModule.forRoot([{ ttl: 60_000, limit: 100 }]),
     AuthModule,
     PermissionsModule,
     AdminModule,
@@ -46,7 +49,10 @@ import { TestMatchModule } from './test-match/test-match.module';
   controllers: [AppController],
   providers: [
     AppService,
-    // 전역 가드: 반드시 JWT 인증 → 권한 순으로 등록 (PermissionsGuard 가 req.user 사용).
+    // 전역 가드 실행 순서: 요청량 제한 → JWT 인증 → 권한.
+    // (ThrottlerGuard 를 가장 먼저 두어 인증 이전에 무차별 대입을 차단한다.
+    //  PermissionsGuard 는 req.user 를 사용하므로 JwtAuthGuard 뒤여야 한다.)
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: PermissionsGuard },
   ],

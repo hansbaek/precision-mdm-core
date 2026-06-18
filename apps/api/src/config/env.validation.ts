@@ -91,6 +91,14 @@ class EnvironmentVariables {
   @IsEnum(AuthProviderKind)
   @IsOptional()
   AUTH_PROVIDER?: AuthProviderKind;
+
+  /**
+   * 허용할 프런트엔드 Origin 목록(콤마 구분). 미설정 시 개발 환경에서는
+   * 전체 허용(reflect), 운영 환경에서는 차단된다. (main.ts 참조)
+   */
+  @IsString()
+  @IsOptional()
+  CORS_ORIGINS?: string;
 }
 
 export function validateEnvironment(config: Record<string, unknown>) {

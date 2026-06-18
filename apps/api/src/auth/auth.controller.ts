@@ -1,5 +1,6 @@
 import { Body, Controller, Get, Post, Put } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import {
   AuthService,
   AuthSession,
@@ -26,6 +27,8 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Public()
+  // 무차별 대입 방어: IP 당 60초 5회로 전역 한도보다 엄격하게 제한.
+  @Throttle({ default: { ttl: 60_000, limit: 5 } })
   @Post('signin')
   @ApiOperation({ summary: '로그인 — JWT + 프로필 + 허용 메뉴 반환' })
   async signIn(@Body() dto: SignInDto): Promise<CommonReturn<AuthSession>> {
