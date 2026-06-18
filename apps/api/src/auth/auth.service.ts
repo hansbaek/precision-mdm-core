@@ -1,6 +1,7 @@
 import { Inject, Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
+import * as bcrypt from 'bcryptjs';
 import { Repository } from 'typeorm';
 import { PermissionsService } from '../permissions/permissions.service';
 import { MenuPermission } from '../permissions/permissions.types';
@@ -57,6 +58,33 @@ export class AuthService {
     const profile = this.toProfile(user);
     const menus = await this.permissions.getVisibleMenus(user.roleId);
     return { profile, menus };
+  }
+
+  /**
+   * 본인 비밀번호 변경. 성공 시 null, 실패 시 사용자에게 보여줄 오류 메시지.
+   * (signIn 과 동일하게 200 + ok:false 로 응답해 전역 401 리다이렉트를 피한다.)
+   */
+  async changePassword(
+    userId: string,
+    currentPassword: string,
+    newPassword: string,
+  ): Promise<string | null> {
+    const user = await this.userRepo.findOne({
+      where: { userId, useYn: 'Y' },
+    });
+    if (!user || user.authSource !== 'LOCAL' || !user.passwordHash) {
+      return '비밀번호를 변경할 수 없는 계정입니다.';
+    }
+    const matched = await bcrypt.compare(currentPassword, user.passwordHash);
+    if (!matched) {
+      return '현재 비밀번호가 올바르지 않습니다.';
+    }
+    if (await bcrypt.compare(newPassword, user.passwordHash)) {
+      return '새 비밀번호가 현재 비밀번호와 동일합니다.';
+    }
+    user.passwordHash = await bcrypt.hash(newPassword, 10);
+    await this.userRepo.save(user);
+    return null;
   }
 
   private async buildSession(user: AuthenticatedUser): Promise<AuthSession> {

@@ -3,11 +3,13 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { Bell, HelpCircle, Languages, LogOut, Moon, Search, Settings, Sun } from 'lucide-react';
+import { Bell, HelpCircle, KeyRound, Languages, LogOut, Moon, Search, Settings, Sun } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
 
+import ChangePasswordModal from '@/components/ChangePasswordModal';
 import { Button } from '@/components/ui/button';
 import { Kbd, KbdGroup } from '@/components/ui/kbd';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -29,6 +31,7 @@ export default function Header({ tabs, activeTab, setActiveTab, onOpenPalette }:
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const profile = useUserProfile((s) => s.userProfile);
+  const [pwOpen, setPwOpen] = useState(false);
 
   const isEnLang = (i18n.language || 'kr').startsWith('en');
   const displayName = (isEnLang ? profile.userNameEng : profile.userName) || profile.userId || '-';
@@ -241,6 +244,13 @@ export default function Header({ tabs, activeTab, setActiveTab, onOpenPalette }:
               </p>
             </div>
             <button
+              onClick={() => setPwOpen(true)}
+              className="w-full flex items-center gap-2 px-4 py-3 text-left hover:bg-muted text-foreground font-bold transition-colors border-b border-border"
+            >
+              <KeyRound className="h-3.5 w-3.5" />
+              {t('navbar.profile.changePassword.title')}
+            </button>
+            <button
               onClick={handleLogout}
               className="w-full flex items-center gap-2 px-4 py-3 text-left hover:bg-muted text-foreground font-bold transition-colors"
             >
@@ -250,6 +260,8 @@ export default function Header({ tabs, activeTab, setActiveTab, onOpenPalette }:
           </PopoverContent>
         </Popover>
       </div>
+
+      <ChangePasswordModal open={pwOpen} onOpenChange={setPwOpen} />
     </header>
   );
 }

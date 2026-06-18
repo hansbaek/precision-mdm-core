@@ -10,3 +10,9 @@ export const signIn = (data: {
 export const getMe = (): Promise<
   CommonReturnType<{ profile: UserProfile; menus: MenuPermission[] }>
 > => axiosInstance.get('/auth/me').then((res) => res.data);
+
+export const changePassword = (data: {
+  currentPassword: string;
+  newPassword: string;
+}): Promise<CommonReturnType<null>> =>
+  axiosInstance.post('/auth/password', data).then((res) => res.data);

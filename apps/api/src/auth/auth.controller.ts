@@ -4,6 +4,7 @@ import { AuthService, AuthSession, UserProfile } from './auth.service';
 import { CurrentUser } from './decorators/current-user.decorator';
 import type { JwtUser } from './decorators/current-user.decorator';
 import { Public } from './decorators/public.decorator';
+import { ChangePasswordDto } from './dto/change-password.dto';
 import { SignInDto } from './dto/sign-in.dto';
 import { MenuPermission } from '../permissions/permissions.types';
 
@@ -36,5 +37,22 @@ export class AuthController {
   ): Promise<CommonReturn<{ profile: UserProfile; menus: MenuPermission[] }>> {
     const result = await this.authService.me(user.userId);
     return { ok: true, result };
+  }
+
+  @Post('password')
+  @ApiOperation({ summary: '본인 비밀번호 변경' })
+  async changePassword(
+    @CurrentUser() user: JwtUser,
+    @Body() dto: ChangePasswordDto,
+  ): Promise<CommonReturn<null>> {
+    const error = await this.authService.changePassword(
+      user.userId,
+      dto.currentPassword,
+      dto.newPassword,
+    );
+    if (error) {
+      return { ok: false, error };
+    }
+    return { ok: true };
   }
 }

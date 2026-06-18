@@ -100,6 +100,16 @@ i18n
               role: "Role",
               language: "Language",
               editPassword: "Edit Password",
+              changePassword: {
+                title: "Change Password",
+                current: "Current Password",
+                new: "New Password",
+                confirm: "Confirm New Password",
+                submit: "Change Password",
+                success: "Your password has been changed.",
+                mismatch: "New passwords do not match.",
+                tooShort: "Password must be at least 8 characters.",
+              },
             },
           },
           navItem: {
@@ -369,6 +379,16 @@ i18n
               role: "권한",
               language: "언어",
               editPassword: "비밀번호 변경",
+              changePassword: {
+                title: "비밀번호 변경",
+                current: "현재 비밀번호",
+                new: "새 비밀번호",
+                confirm: "새 비밀번호 확인",
+                submit: "비밀번호 변경",
+                success: "비밀번호가 변경되었습니다.",
+                mismatch: "새 비밀번호가 일치하지 않습니다.",
+                tooShort: "비밀번호는 8자 이상이어야 합니다.",
+              },
             },
           },
           navItem: {
