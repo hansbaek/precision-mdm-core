@@ -11,19 +11,24 @@ import { useTranslation } from 'react-i18next';
 import CommandPalette from './components/CommandPalette';
 import ConfirmDeleteDialog from './components/ConfirmDeleteDialog';
 import Header from './components/Header';
+import LegalModal from './components/LegalModal';
 import Sidebar from './components/Sidebar';
 import StdTestItemDetailModal from './components/StdTestItemDetailModal';
 import StdTestItemEditModal from './components/StdTestItemEditModal';
 import { useStdStats } from './hooks/use-std-stats';
 import { useStdTestItems } from './hooks/use-std-test-items';
 import { useCan } from './hooks/use-permissions-store';
+import { getPreferences } from './hooks/use-preferences-store';
+import { useSystemStatusAlerts } from './hooks/use-system-status-alerts';
 import AnalyticsPage from './pages/analytics-page';
+import ApprovalsPage from './pages/approvals-page';
 import ClassificationMaster from './pages/classification-master';
 import DashboardPage from './pages/dashboard-page';
 import ReportsPage from './pages/reports-page';
 import TestMatchPage from './pages/test-match-page';
 import PermissionMatrixPage from './pages/admin/permission-matrix';
 import UsersAdminPage from './pages/admin/users';
+import type { LegalKind } from './content/legal';
 import type { FilterOptions, StdTestItem } from './types';
 
 const INITIAL_FILTERS: FilterOptions = {
@@ -39,6 +44,7 @@ const MODULE_TABS: Record<string, { id: string; labelKey: string }[]> = {
     { id: 'test-match', labelKey: 'app.tabs.testMatch' },
     { id: 'analytics', labelKey: 'app.tabs.analytics' },
     { id: 'reports', labelKey: 'app.tabs.reports' },
+    { id: 'approvals', labelKey: 'app.tabs.approvals' },
   ],
   admin: [
     { id: 'permissions', labelKey: 'app.tabs.permissions' },
@@ -75,24 +81,40 @@ export default function App() {
   const [activeModule, setActiveModule] = useState('test-master');
   const [activeTab, setActiveTab] = useState('dashboard');
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const [legalDoc, setLegalDoc] = useState<LegalKind | null>(null);
+
+  // 시스템 상태 전환 시 토스트 알림(설정 토글로 제어).
+  useSystemStatusAlerts();
 
   // 권한 view 가 있는 탭만. 권한 비귀속 모듈(admin 등)은 모든 탭 노출.
   const visibleTabs = (m: string) => {
     const tabs = MODULE_TABS[m] ?? [];
     if (!PERMISSION_BACKED_MODULES.has(m)) return tabs;
-    return tabs.filter((tab) => can(`${m}.${tab.id}`, 'view'));
+    return tabs.filter((tab) => {
+      // 승인/변경요청 탭은 별도 메뉴가 없으므로 대시보드 조회 권한으로 노출.
+      if (tab.id === 'approvals') return can(`${m}.dashboard`, 'view');
+      return can(`${m}.${tab.id}`, 'view');
+    });
   };
 
-  const [filters, setFilters] = useState<FilterOptions>(INITIAL_FILTERS);
-  const [appliedFilters, setAppliedFilters] = useState<FilterOptions>(INITIAL_FILTERS);
+  // 사용자 환경설정(설정 모달)으로 저장된 표시 기본값을 초기값으로 사용.
+  const initialPrefs = getPreferences();
+  const [filters, setFilters] = useState<FilterOptions>({
+    ...INITIAL_FILTERS,
+    productLine: initialPrefs.defaultProductLine,
+  });
+  const [appliedFilters, setAppliedFilters] = useState<FilterOptions>({
+    ...INITIAL_FILTERS,
+    productLine: initialPrefs.defaultProductLine,
+  });
 
   // 필요시험조회 / 보고서 탭이 공유하는 현재 mcode (탭 이동 후에도 유지).
   const [sharedMcode, setSharedMcode] = useState('');
 
-  const [stdSortBy, setStdSortBy] = useState('id');
-  const [stdSortOrder, setStdSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [stdSortBy, setStdSortBy] = useState(initialPrefs.sortBy);
+  const [stdSortOrder, setStdSortOrder] = useState<'asc' | 'desc'>(initialPrefs.sortOrder);
   const [stdCurrentPage, setStdCurrentPage] = useState(1);
-  const [stdItemsPerPage, setStdItemsPerPage] = useState(20);
+  const [stdItemsPerPage, setStdItemsPerPage] = useState(initialPrefs.pageSize);
   const [viewingStdItem, setViewingStdItem] = useState<StdTestItem | null>(null);
   const [editingStdItem, setEditingStdItem] = useState<StdTestItem | null>(null);
   const [creatingStdItem, setCreatingStdItem] = useState(false);
@@ -170,6 +192,17 @@ export default function App() {
     toast.success(`STD Item #${id} 삭제 완료`);
   };
 
+  // 승인 워크플로: 비승인권자의 변경은 즉시 반영되지 않고 승인 대기로 제출된다.
+  // 라이브 목록은 건드리지 않고 모달만 닫은 뒤 안내한다.
+  const handleChangeRequested = (crId: number) => {
+    setCreatingStdItem(false);
+    setEditingStdItem(null);
+    setDeletingStdItem(null);
+    toast.message(t('app.approval.submitted'), {
+      description: t('app.approval.submittedDesc', { id: crId }),
+    });
+  };
+
   const handleEditCancel = () => {
     // Entered from detail view → return there (values unchanged on cancel).
     if (editOrigin === 'detail' && editingStdItem) setViewingStdItem(editingStdItem);
@@ -227,6 +260,7 @@ export default function App() {
         );
       if (activeTab === 'reports')
         return <ReportsPage initialMcode={sharedMcode} onQueried={setSharedMcode} />;
+      if (activeTab === 'approvals') return <ApprovalsPage />;
       return (
         <DashboardPage
           activeModule={activeModule}
@@ -302,13 +336,21 @@ export default function App() {
         <footer className="h-12 bg-sidebar border-t border-sidebar-border px-6 flex items-center justify-between text-2xs text-sidebar-foreground shrink-0">
           <span>{t('app.footer.copyright')}</span>
           <div className="flex items-center gap-4 text-sidebar-foreground/70 font-semibold select-none">
-            <a href="#privacy" className="hover:text-white transition-all">
+            <button
+              type="button"
+              onClick={() => setLegalDoc('privacy')}
+              className="hover:text-white transition-all cursor-pointer"
+            >
               {t('app.footer.privacy')}
-            </a>
+            </button>
             <span>|</span>
-            <a href="#teams" className="hover:text-white transition-all">
+            <button
+              type="button"
+              onClick={() => setLegalDoc('terms')}
+              className="hover:text-white transition-all cursor-pointer"
+            >
               {t('app.footer.terms')}
-            </a>
+            </button>
           </div>
         </footer>
       </div>
@@ -341,13 +383,17 @@ export default function App() {
         onClose={creatingStdItem ? () => setCreatingStdItem(false) : handleEditCancel}
         onSaved={creatingStdItem ? handleStdItemCreated : handleStdItemSaved}
         onCreatedContinue={handleStdItemCreatedContinue}
+        onPending={handleChangeRequested}
       />
 
       <ConfirmDeleteDialog
         item={deletingStdItem}
         onClose={() => setDeletingStdItem(null)}
         onDeleted={handleStdItemDeleted}
+        onPending={handleChangeRequested}
       />
+
+      <LegalModal kind={legalDoc} onClose={() => setLegalDoc(null)} />
     </div>
   );
 }

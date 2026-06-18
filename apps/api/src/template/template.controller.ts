@@ -3,7 +3,9 @@ import {
   Body,
   Controller,
   Delete,
+  forwardRef,
   Get,
+  Inject,
   Param,
   ParseIntPipe,
   Patch,
@@ -27,6 +29,9 @@ import { TemplateUploadService } from './template-upload.service';
 import { UpdateStdTestItemDto } from './dto/update-std-test-item.dto';
 import { CreateStdTestItemDto } from './dto/create-std-test-item.dto';
 import { RequirePermission } from '../permissions/decorators/require-permission.decorator';
+import { ChangeRequestsService } from '../change-requests/change-requests.service';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import type { JwtUser } from '../auth/decorators/current-user.decorator';
 
 /** 시험항목기준마스터 데이터는 대시보드 탭에 귀속된다. */
 const DASHBOARD_MENU = 'test-master.dashboard';
@@ -49,6 +54,8 @@ export class TemplateController {
   constructor(
     private readonly service: TemplateService,
     private readonly uploadService: TemplateUploadService,
+    @Inject(forwardRef(() => ChangeRequestsService))
+    private readonly changeRequests: ChangeRequestsService,
   ) {}
 
   @Get('std-test-items')
@@ -85,29 +92,43 @@ export class TemplateController {
   @Post('std-test-items')
   @RequirePermission(DASHBOARD_MENU, 'create')
   @ApiOperation({
-    summary: 'TEMPLATE_STD_TEST_ITEM 신규 생성',
+    summary: 'TEMPLATE_STD_TEST_ITEM 신규 생성 (승인 워크플로 적용)',
     description:
-      'TMPLT_ID는 시퀀스로 자동 부여, CREATED_AT은 서버 일자. PRODUCT_LINE·TEST_ITEM_NAME 필수.',
+      '승인권자는 즉시 반영, 그 외 사용자는 승인 대기로 등록된다. 응답 applied=false 이면 crId 로 대기 등록됨.',
   })
-  create(@Body() dto: CreateStdTestItemDto) {
-    return this.service.createStdTestItem(dto);
+  create(@CurrentUser() user: JwtUser, @Body() dto: CreateStdTestItemDto) {
+    return this.changeRequests.submitStdChange(user, {
+      operation: 'CREATE',
+      payload: dto,
+      summary: `생성: ${dto.productLine} / ${dto.testItemName}`,
+    });
   }
 
   @Patch('std-test-items/:id')
   @RequirePermission(DASHBOARD_MENU, 'update')
-  @ApiOperation({ summary: 'TEMPLATE_STD_TEST_ITEM 수정' })
+  @ApiOperation({ summary: 'TEMPLATE_STD_TEST_ITEM 수정 (승인 워크플로 적용)' })
   update(
+    @CurrentUser() user: JwtUser,
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateStdTestItemDto,
   ) {
-    return this.service.updateStdTestItem(id, dto);
+    return this.changeRequests.submitStdChange(user, {
+      operation: 'UPDATE',
+      targetId: id,
+      payload: dto,
+      summary: `수정: 항목 #${id}`,
+    });
   }
 
   @Delete('std-test-items/:id')
   @RequirePermission(DASHBOARD_MENU, 'delete')
-  @ApiOperation({ summary: 'TEMPLATE_STD_TEST_ITEM 삭제 (하드 삭제)' })
-  remove(@Param('id', ParseIntPipe) id: number) {
-    return this.service.deleteStdTestItem(id);
+  @ApiOperation({ summary: 'TEMPLATE_STD_TEST_ITEM 삭제 (승인 워크플로 적용)' })
+  remove(@CurrentUser() user: JwtUser, @Param('id', ParseIntPipe) id: number) {
+    return this.changeRequests.submitStdChange(user, {
+      operation: 'DELETE',
+      targetId: id,
+      summary: `삭제: 항목 #${id}`,
+    });
   }
 
   @Post('upload/preview')

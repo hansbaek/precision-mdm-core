@@ -7,10 +7,12 @@ import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { AdminModule } from './admin/admin.module';
+import { ChangeRequestsModule } from './change-requests/change-requests.module';
 import { getOracleTypeOrmOptions } from './config/database.config';
 import { validateEnvironment } from './config/env.validation';
 import { EndurSvrtyModule } from './endur-svrty/endur-svrty.module';
 import { HealthModule } from './health/health.module';
+import { NotificationsModule } from './notifications/notifications.module';
 import { PermissionsModule } from './permissions/permissions.module';
 import { PermissionsGuard } from './permissions/permissions.guard';
 import { StdCodesModule } from './std-codes/std-codes.module';
@@ -32,8 +34,10 @@ import { TestMatchModule } from './test-match/test-match.module';
     AuthModule,
     PermissionsModule,
     AdminModule,
+    ChangeRequestsModule,
     EndurSvrtyModule,
     HealthModule,
+    NotificationsModule,
     StdCodesModule,
     TemplateModule,
     TestClassificationModule,

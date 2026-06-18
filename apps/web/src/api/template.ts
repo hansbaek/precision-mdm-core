@@ -32,6 +32,10 @@ export const getStdTestItems = (filters: StdTestItemFilters = {}): Promise<StdTe
   return axiosInstance.get('/template/std-test-items', { params }).then(res => res.data);
 };
 
+/** 단건 조회 — 승인 검토 시 현재값(이전값) 비교용. */
+export const getStdTestItem = (id: number): Promise<StdTestItem> =>
+  axiosInstance.get(`/template/std-test-items/${id}`).then(res => res.data);
+
 export type StdTestItemUpdate = Partial<{
   productLine: string;
   testItemName: string;
@@ -62,7 +66,18 @@ export type StdTestItemUpdate = Partial<{
   markets: string;
 }>;
 
-export const updateStdTestItem = (id: number, data: StdTestItemUpdate): Promise<StdTestItem> =>
+/**
+ * 승인 워크플로 결과. 승인권자는 즉시 반영(applied=true, result 포함),
+ * 그 외 사용자는 승인 대기 등록(applied=false, crId 포함).
+ */
+export type SubmitResult<T> =
+  | { applied: true; result: T }
+  | { applied: false; crId: number };
+
+export const updateStdTestItem = (
+  id: number,
+  data: StdTestItemUpdate,
+): Promise<SubmitResult<StdTestItem>> =>
   axiosInstance.patch(`/template/std-test-items/${id}`, data).then(res => res.data);
 
 /** Create — PRODUCT_LINE & TEST_ITEM_NAME required; TMPLT_ID/CREATED_AT server-assigned. */
@@ -71,11 +86,15 @@ export type StdTestItemCreate = StdTestItemUpdate & {
   testItemName: string;
 };
 
-export const createStdTestItem = (data: StdTestItemCreate): Promise<StdTestItem> =>
+export const createStdTestItem = (
+  data: StdTestItemCreate,
+): Promise<SubmitResult<StdTestItem>> =>
   axiosInstance.post('/template/std-test-items', data).then(res => res.data);
 
-/** Hard delete — removes the row permanently. */
-export const deleteStdTestItem = (id: number): Promise<{ deleted: true; id: number }> =>
+/** Hard delete — removes the row permanently (또는 승인 대기). */
+export const deleteStdTestItem = (
+  id: number,
+): Promise<SubmitResult<{ deleted: true; id: number }>> =>
   axiosInstance.delete(`/template/std-test-items/${id}`).then(res => res.data);
 
 export const getStdStats = (): Promise<StdStats> =>

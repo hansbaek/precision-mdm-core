@@ -37,6 +37,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { getPreferences } from '@/hooks/use-preferences-store';
 import type { StdTestItem } from '../types';
 import { ALL_MARKETS } from '../types';
 
@@ -123,7 +124,8 @@ export default function StdTestItemTable({
   onResetFilters,
   canEdit = true, canDelete = true,
 }: Props) {
-  const [compact, setCompact] = useState(false);
+  // 설정의 테이블 밀도 기본값을 초기값으로 사용 (이후 토글로 일시 변경 가능).
+  const [compact, setCompact] = useState(getPreferences().density === 'compact');
 
   const handleSort = (field: string) => {
     if (sortBy === field) setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');

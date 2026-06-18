@@ -10,6 +10,8 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
 
 import ChangePasswordModal from '@/components/ChangePasswordModal';
+import SettingsModal from '@/components/SettingsModal';
+import { useNotifications } from '@/hooks/use-notifications';
 import { Button } from '@/components/ui/button';
 import { Kbd, KbdGroup } from '@/components/ui/kbd';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -32,6 +34,7 @@ export default function Header({ tabs, activeTab, setActiveTab, onOpenPalette }:
   const navigate = useNavigate();
   const profile = useUserProfile((s) => s.userProfile);
   const [pwOpen, setPwOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   const isEnLang = (i18n.language || 'kr').startsWith('en');
   const displayName = (isEnLang ? profile.userNameEng : profile.userName) || profile.userId || '-';
@@ -45,11 +48,21 @@ export default function Header({ tabs, activeTab, setActiveTab, onOpenPalette }:
   const isEn = (i18n.language || 'kr').startsWith('en');
   const toggleLang = () => i18n.changeLanguage(isEn ? 'kr' : 'en');
 
-  const recentAlerts = [
-    { id: 1, text: 'T-10045 status shifted to Pending.', time: '10m ago' },
-    { id: 2, text: 'New Excel Upload performed by system administrator.', time: '1h ago' },
-    { id: 3, text: 'ASTM D412 tensile strength limits globally approved.', time: '2h ago' }
-  ];
+  const { items: notifications, unread, markRead, markAllRead } = useNotifications();
+
+  const fmtTime = (iso: string) =>
+    new Date(iso).toLocaleString(isEnLang ? 'en-US' : 'ko-KR', {
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+
+  // 알림 클릭: 읽음 처리 + 변경요청 링크면 승인 관리 탭으로 이동.
+  const handleNotificationClick = (notiId: number, link: string | null) => {
+    void markRead(notiId);
+    if (link?.startsWith('change-request:')) setActiveTab('approvals');
+  };
 
   return (
     <header className="h-20 bg-card/80 backdrop-blur-md border-b border-border px-8 flex items-center justify-between shrink-0 select-none relative z-10">
@@ -122,28 +135,59 @@ export default function Header({ tabs, activeTab, setActiveTab, onOpenPalette }:
                     className="relative text-secondary"
                   >
                     <Bell className="h-4.5 w-4.5" />
-                    <span className="absolute top-1.5 right-1.5 h-1.5 w-1.5 bg-accent rounded-full border border-card" />
+                    {unread > 0 && (
+                      <span className="absolute top-1.5 right-1.5 h-1.5 w-1.5 bg-accent rounded-full border border-card" />
+                    )}
                   </Button>
                 </PopoverTrigger>
               </TooltipTrigger>
-              <TooltipContent>알림</TooltipContent>
+              <TooltipContent>{t('navbar.notifications')}</TooltipContent>
             </Tooltip>
             <PopoverContent
               id="notification-dropdown"
               align="end"
               className="w-80 p-0 text-xs overflow-hidden"
             >
-              <div className="px-4 py-3 border-b border-border font-extrabold text-foreground flex justify-between items-center tracking-tight">
-                <span>알림 (System Notifications)</span>
-                <span className="text-2xs bg-muted text-accent px-2 py-0.5 rounded-md font-mono font-bold">3 NEW</span>
+              <div className="px-4 py-3 border-b border-border font-extrabold text-foreground flex justify-between items-center tracking-tight gap-2">
+                <span>{t('navbar.notifications')}</span>
+                <div className="flex items-center gap-2">
+                  {unread > 0 && (
+                    <span className="text-2xs bg-muted text-accent px-2 py-0.5 rounded-md font-mono font-bold">
+                      {unread} NEW
+                    </span>
+                  )}
+                  {unread > 0 && (
+                    <button
+                      onClick={() => void markAllRead()}
+                      className="text-2xs text-muted-foreground hover:text-foreground font-bold"
+                    >
+                      {t('navbar.markAllRead')}
+                    </button>
+                  )}
+                </div>
               </div>
-              <div className="divide-y divide-border max-h-60 overflow-y-auto">
-                {recentAlerts.map(alert => (
-                  <div key={alert.id} className="p-3.5 hover:bg-muted/50">
-                    <p className="text-foreground leading-normal font-medium">{alert.text}</p>
-                    <span className="text-2xs text-muted-foreground font-mono mt-1 w-full block">{alert.time}</span>
-                  </div>
-                ))}
+              <div className="divide-y divide-border max-h-72 overflow-y-auto">
+                {notifications.length === 0 ? (
+                  <p className="p-6 text-center text-muted-foreground">{t('navbar.noNotifications')}</p>
+                ) : (
+                  notifications.map((n) => (
+                    <button
+                      key={n.notiId}
+                      onClick={() => handleNotificationClick(n.notiId, n.link)}
+                      className={`block w-full text-left p-3.5 hover:bg-muted/50 transition-colors ${n.isRead ? '' : 'bg-accent/5'}`}
+                    >
+                      <p className="text-foreground leading-normal font-medium flex items-start gap-2">
+                        {!n.isRead && (
+                          <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-accent shrink-0" />
+                        )}
+                        <span>{n.message}</span>
+                      </p>
+                      <span className="text-2xs text-muted-foreground font-mono mt-1 w-full block">
+                        {fmtTime(n.createdAt)}
+                      </span>
+                    </button>
+                  ))
+                )}
               </div>
             </PopoverContent>
           </Popover>
@@ -193,6 +237,7 @@ export default function Header({ tabs, activeTab, setActiveTab, onOpenPalette }:
                 size="icon"
                 aria-label="설정 (Settings)"
                 className="text-secondary"
+                onClick={() => setSettingsOpen(true)}
               >
                 <Settings className="h-4.5 w-4.5" />
               </Button>
@@ -262,6 +307,7 @@ export default function Header({ tabs, activeTab, setActiveTab, onOpenPalette }:
       </div>
 
       <ChangePasswordModal open={pwOpen} onOpenChange={setPwOpen} />
+      <SettingsModal open={settingsOpen} onOpenChange={setSettingsOpen} />
     </header>
   );
 }

@@ -1,11 +1,17 @@
-import { Body, Controller, Get, Post } from '@nestjs/common';
+import { Body, Controller, Get, Post, Put } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
-import { AuthService, AuthSession, UserProfile } from './auth.service';
+import {
+  AuthService,
+  AuthSession,
+  UserPreferences,
+  UserProfile,
+} from './auth.service';
 import { CurrentUser } from './decorators/current-user.decorator';
 import type { JwtUser } from './decorators/current-user.decorator';
 import { Public } from './decorators/public.decorator';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { SignInDto } from './dto/sign-in.dto';
+import { UpdatePreferencesDto } from './dto/update-preferences.dto';
 import { MenuPermission } from '../permissions/permissions.types';
 
 interface CommonReturn<T> {
@@ -31,11 +37,25 @@ export class AuthController {
   }
 
   @Get('me')
-  @ApiOperation({ summary: '현재 사용자 프로필 + 허용 메뉴' })
-  async me(
-    @CurrentUser() user: JwtUser,
-  ): Promise<CommonReturn<{ profile: UserProfile; menus: MenuPermission[] }>> {
+  @ApiOperation({ summary: '현재 사용자 프로필 + 허용 메뉴 + 환경설정' })
+  async me(@CurrentUser() user: JwtUser): Promise<
+    CommonReturn<{
+      profile: UserProfile;
+      menus: MenuPermission[];
+      preferences: UserPreferences | null;
+    }>
+  > {
     const result = await this.authService.me(user.userId);
+    return { ok: true, result };
+  }
+
+  @Put('preferences')
+  @ApiOperation({ summary: '본인 표시 환경설정 저장' })
+  async savePreferences(
+    @CurrentUser() user: JwtUser,
+    @Body() dto: UpdatePreferencesDto,
+  ): Promise<CommonReturn<UserPreferences>> {
+    const result = await this.authService.savePreferences(user.userId, dto);
     return { ok: true, result };
   }
 

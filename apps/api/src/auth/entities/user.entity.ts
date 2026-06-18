@@ -51,6 +51,15 @@ export class UserEntity {
   @Column({ name: 'USE_YN', type: 'varchar', length: 1, default: 'Y' })
   useYn: string;
 
+  /** 사용자 표시 환경설정(JSON 문자열). 미설정 시 null → 프런트 기본값 사용. */
+  @Column({
+    name: 'PREFERENCES',
+    type: 'varchar2',
+    length: 2000,
+    nullable: true,
+  })
+  preferences: string | null;
+
   @CreateDateColumn({ name: 'CREATED_AT', type: 'timestamp' })
   createdAt: Date;
 

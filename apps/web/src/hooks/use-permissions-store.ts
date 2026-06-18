@@ -21,6 +21,8 @@ const allow = (m: MenuPermission | undefined, action: PermissionAction) => {
       return m.canUpdate;
     case 'delete':
       return m.canDelete;
+    case 'approve':
+      return m.canApprove;
   }
 };
 

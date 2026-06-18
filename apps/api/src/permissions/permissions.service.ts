@@ -35,6 +35,7 @@ export class PermissionsService {
         'p.CAN_CREATE_YN AS "canCreate"',
         'p.CAN_UPDATE_YN AS "canUpdate"',
         'p.CAN_DELETE_YN AS "canDelete"',
+        'p.CAN_APPROVE_YN AS "canApprove"',
       ])
       .orderBy('m.SORT_ORDER', 'ASC')
       .getRawMany<Record<string, string | number>>();
@@ -49,6 +50,7 @@ export class PermissionsService {
       canCreate: isY(r.canCreate as string),
       canUpdate: isY(r.canUpdate as string),
       canDelete: isY(r.canDelete as string),
+      canApprove: isY(r.canApprove as string),
     }));
   }
 
@@ -70,6 +72,8 @@ export class PermissionsService {
         return isY(perm.canUpdateYn);
       case 'delete':
         return isY(perm.canDeleteYn);
+      case 'approve':
+        return isY(perm.canApproveYn);
     }
   }
 }

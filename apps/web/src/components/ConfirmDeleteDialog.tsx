@@ -19,13 +19,15 @@ interface Props {
   item: StdTestItem | null;
   onClose: () => void;
   onDeleted: (id: number) => void;
+  /** 승인 워크플로: 삭제가 즉시 반영되지 않고 승인 대기로 제출됨. */
+  onPending: (crId: number) => void;
 }
 
 /**
  * Confirmation gate for the (irreversible) hard delete. Shows exactly which
  * record is targeted so the user can't delete the wrong row by reflex.
  */
-export default function ConfirmDeleteDialog({ item, onClose, onDeleted }: Props) {
+export default function ConfirmDeleteDialog({ item, onClose, onDeleted, onPending }: Props) {
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -34,7 +36,11 @@ export default function ConfirmDeleteDialog({ item, onClose, onDeleted }: Props)
     setDeleting(true);
     setError(null);
     try {
-      await deleteStdTestItem(item.id);
+      const res = await deleteStdTestItem(item.id);
+      if (!res.applied) {
+        onPending(res.crId);
+        return;
+      }
       onDeleted(item.id);
     } catch {
       setError('삭제 중 오류가 발생했습니다. 다시 시도해주세요.');

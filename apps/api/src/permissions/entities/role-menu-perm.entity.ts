@@ -23,4 +23,8 @@ export class RoleMenuPermEntity {
 
   @Column({ name: 'CAN_DELETE_YN', type: 'varchar', length: 1, default: 'N' })
   canDeleteYn: string;
+
+  /** 변경 요청 직접 반영 + 승인/반려 권한. */
+  @Column({ name: 'CAN_APPROVE_YN', type: 'varchar', length: 1, default: 'N' })
+  canApproveYn: string;
 }

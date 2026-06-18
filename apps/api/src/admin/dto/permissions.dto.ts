@@ -22,6 +22,10 @@ export class MenuPermissionInput {
   @ApiProperty()
   @IsBoolean()
   canDelete: boolean;
+
+  @ApiProperty({ description: '변경 요청 직접 반영 + 승인/반려' })
+  @IsBoolean()
+  canApprove: boolean;
 }
 
 export class UpdatePermissionsDto {

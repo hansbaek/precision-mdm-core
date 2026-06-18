@@ -18,6 +18,38 @@ import {
 import { useTranslation } from 'react-i18next';
 import logoSymbol from '@/assets/HKT_Symbol.svg';
 import { useCan } from '@/hooks/use-permissions-store';
+import { useHealth, type HealthStatus } from '@/hooks/use-health';
+
+/** 상태별 표시: 점 색상 / 펄스 여부 / 배지 색상 / 라벨 i18n 키. */
+const HEALTH_PRESENTATION: Record<
+  HealthStatus,
+  { dot: string; pulse: boolean; badge: string; labelKey: string }
+> = {
+  checking: {
+    dot: 'bg-slate-400',
+    pulse: true,
+    badge: 'text-slate-400',
+    labelKey: 'app.nav.statusChecking',
+  },
+  online: {
+    dot: 'bg-emerald-400',
+    pulse: true,
+    badge: 'text-emerald-400',
+    labelKey: 'app.nav.online',
+  },
+  degraded: {
+    dot: 'bg-amber-400',
+    pulse: true,
+    badge: 'text-amber-400',
+    labelKey: 'app.nav.statusDegraded',
+  },
+  offline: {
+    dot: 'bg-red-500',
+    pulse: false,
+    badge: 'text-red-400',
+    labelKey: 'app.nav.statusOffline',
+  },
+};
 
 interface SidebarProps {
   activeModule: string;
@@ -29,6 +61,8 @@ export default function Sidebar({ activeModule, setActiveModule, itemsCount }: S
   const [collapsed, setCollapsed] = useState(false);
   const { t } = useTranslation();
   const can = useCan();
+  const health = useHealth();
+  const healthUi = HEALTH_PRESENTATION[health];
 
   // 권한(view)이 있는 모듈만 노출. admin 모듈은 권한 보유자에게만 보인다.
   const menuItems = [
@@ -129,19 +163,28 @@ export default function Sidebar({ activeModule, setActiveModule, itemsCount }: S
           className={`space-y-2.5 pt-1 text-2xs text-sidebar-foreground/70 overflow-hidden transition-all duration-300 ${collapsed ? 'max-h-0 opacity-0 pt-0' : 'max-h-40 opacity-100'
             }`}
         >
-          <a href="#support" className="flex items-center gap-2 hover:text-white transition-colors py-0.5 font-bold">
+          <a
+            href="https://helpdesk.hankooktech.com/index.jsp"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2 hover:text-white transition-colors py-0.5 font-bold"
+          >
             <HelpCircle className="h-3.5 w-3.5 shrink-0" />
             <span>{t('app.nav.support')}</span>
           </a>
 
           <div className="flex items-center justify-between py-1.5 border-t border-sidebar-border pt-3">
             <span className="flex items-center gap-2 font-bold">
-              {/* Fixed light green: sidebar stays navy in both themes */}
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+              {/* 색상은 실제 헬스체크 상태를 반영. 사이드바는 두 테마 모두 navy 유지 */}
+              <span
+                className={`h-1.5 w-1.5 rounded-full shrink-0 ${healthUi.dot} ${healthUi.pulse ? 'animate-pulse' : ''}`}
+              />
               <span>{t('app.nav.systemStatus')}</span>
             </span>
-            <span className="text-2xs bg-sidebar-accent text-emerald-400 font-mono font-bold px-2 py-0.5 rounded-md uppercase tracking-wide">
-              {t('app.nav.online')}
+            <span
+              className={`text-2xs bg-sidebar-accent font-mono font-bold px-2 py-0.5 rounded-md uppercase tracking-wide ${healthUi.badge}`}
+            >
+              {t(healthUi.labelKey)}
             </span>
           </div>
         </div>

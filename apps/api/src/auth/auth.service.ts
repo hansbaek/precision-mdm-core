@@ -23,10 +23,21 @@ export interface UserProfile {
   role: string;
 }
 
+/** 사용자 표시 환경설정. 미설정 사용자는 null. */
+export interface UserPreferences {
+  pageSize: number;
+  sortBy: string;
+  sortOrder: 'asc' | 'desc';
+  defaultProductLine: string;
+  density: 'comfortable' | 'compact';
+  notifySystemStatus: boolean;
+}
+
 export interface AuthSession {
   token: string;
   profile: UserProfile;
   menus: MenuPermission[];
+  preferences: UserPreferences | null;
 }
 
 @Injectable()
@@ -57,7 +68,37 @@ export class AuthService {
     }
     const profile = this.toProfile(user);
     const menus = await this.permissions.getVisibleMenus(user.roleId);
-    return { profile, menus };
+    return {
+      profile,
+      menus,
+      preferences: this.parsePreferences(user.preferences),
+    };
+  }
+
+  /** 본인 표시 환경설정 저장. 저장된 값을 반환. */
+  async savePreferences(
+    userId: string,
+    preferences: UserPreferences,
+  ): Promise<UserPreferences> {
+    const user = await this.userRepo.findOne({
+      where: { userId, useYn: 'Y' },
+    });
+    if (!user) {
+      throw new UnauthorizedException('사용자를 찾을 수 없습니다.');
+    }
+    user.preferences = JSON.stringify(preferences);
+    await this.userRepo.save(user);
+    return preferences;
+  }
+
+  /** 저장된 JSON 문자열을 파싱. 없거나 손상 시 null(프런트 기본값 사용). */
+  private parsePreferences(raw: string | null): UserPreferences | null {
+    if (!raw) return null;
+    try {
+      return JSON.parse(raw) as UserPreferences;
+    } catch {
+      return null;
+    }
   }
 
   /**
@@ -99,7 +140,17 @@ export class AuthService {
       teamNameEng: user.teamNmEng ?? '',
       role: user.roleId ?? '',
     };
-    return { token, profile, menus };
+    // 로그인 응답에도 저장된 환경설정을 실어 첫 화면부터 반영.
+    const stored = await this.userRepo.findOne({
+      where: { userId: user.userId },
+      select: { userId: true, preferences: true },
+    });
+    return {
+      token,
+      profile,
+      menus,
+      preferences: this.parsePreferences(stored?.preferences ?? null),
+    };
   }
 
   private toProfile(user: UserEntity): UserProfile {

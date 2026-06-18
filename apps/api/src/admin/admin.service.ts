@@ -105,6 +105,7 @@ export class AdminService {
         canCreate: isY(p?.canCreateYn),
         canUpdate: isY(p?.canUpdateYn),
         canDelete: isY(p?.canDeleteYn),
+        canApprove: isY(p?.canApproveYn),
       };
     });
   }
@@ -127,6 +128,7 @@ export class AdminService {
           canCreateYn: yn(p.canCreate),
           canUpdateYn: yn(p.canUpdate),
           canDeleteYn: yn(p.canDelete),
+          canApproveYn: yn(p.canApprove),
         },
         ['roleId', 'menuId'],
       );
@@ -176,10 +178,14 @@ export class AdminService {
     // 기본 관리자 계정은 잠금 방지를 위해 비활성화/역할 강등을 차단한다.
     if (userId === 'admin') {
       if (dto.useYn === 'N') {
-        throw new BadRequestException('기본 관리자 계정은 비활성화할 수 없습니다.');
+        throw new BadRequestException(
+          '기본 관리자 계정은 비활성화할 수 없습니다.',
+        );
       }
       if (dto.roleId && dto.roleId !== 'ADMIN') {
-        throw new BadRequestException('기본 관리자 계정의 역할은 변경할 수 없습니다.');
+        throw new BadRequestException(
+          '기본 관리자 계정의 역할은 변경할 수 없습니다.',
+        );
       }
     }
     if (dto.roleId) await this.assertRoleExists(dto.roleId);

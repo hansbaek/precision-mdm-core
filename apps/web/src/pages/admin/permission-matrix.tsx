@@ -21,12 +21,14 @@ const EMPTY_FLAGS: Flags = {
   canCreate: false,
   canUpdate: false,
   canDelete: false,
+  canApprove: false,
 };
 const ACTIONS: { key: keyof Flags; labelKey: string }[] = [
   { key: 'canView', labelKey: 'admin.perm.view' },
   { key: 'canCreate', labelKey: 'admin.perm.create' },
   { key: 'canUpdate', labelKey: 'admin.perm.update' },
   { key: 'canDelete', labelKey: 'admin.perm.delete' },
+  { key: 'canApprove', labelKey: 'admin.perm.approve' },
 ];
 
 export default function PermissionMatrixPage() {
@@ -66,6 +68,7 @@ export default function PermissionMatrixPage() {
             canCreate: p.canCreate,
             canUpdate: p.canUpdate,
             canDelete: p.canDelete,
+            canApprove: p.canApprove,
           };
         }
         setMatrix(map);

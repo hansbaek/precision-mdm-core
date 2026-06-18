@@ -249,6 +249,8 @@ interface Props {
   onSaved: (saved: StdTestItem) => void;
   /** Create-and-continue: parent adds to the list but keeps the modal open. */
   onCreatedContinue?: (saved: StdTestItem) => void;
+  /** 승인 워크플로: 즉시 반영 대신 승인 대기로 제출됨(비승인권자). */
+  onPending: (crId: number) => void;
 }
 
 export default function StdTestItemEditModal({
@@ -258,6 +260,7 @@ export default function StdTestItemEditModal({
   onClose,
   onSaved,
   onCreatedContinue,
+  onPending,
 }: Props) {
   const isCreate = mode === 'create';
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
@@ -376,7 +379,13 @@ export default function StdTestItemEditModal({
       const payload = { ...form, markets: marketsStr };
 
       if (isCreate || !item) {
-        const created = await createStdTestItem(payload);
+        const res = await createStdTestItem(payload);
+        // 비승인권자: 승인 대기로 등록됨 — 목록에 추가하지 않고 알림만.
+        if (!res.applied) {
+          onPending(res.crId);
+          return;
+        }
+        const created = res.result;
         if (keepOpen) {
           // Create-and-continue: keep PRODUCT_LINE (consecutive items usually
           // share it), reset the rest, and surface an inline confirmation.
@@ -391,8 +400,12 @@ export default function StdTestItemEditModal({
       }
 
       // Edit save — parent closes and routes back.
-      const updated = await updateStdTestItem(item.id, payload);
-      onSaved(updated);
+      const res = await updateStdTestItem(item.id, payload);
+      if (!res.applied) {
+        onPending(res.crId);
+        return;
+      }
+      onSaved(res.result);
     } catch {
       setError(
         isCreate
