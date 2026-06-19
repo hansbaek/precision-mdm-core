@@ -44,6 +44,8 @@ type FormState = {
   endurSvrty: string;
   certiTestYn: string;
   certiType: string;
+  certiRegulationType: string;
+  certiTypeId: string;
   tempTire: string;
   snowMark: string;
   frt: string;
@@ -106,6 +108,8 @@ const EMPTY_FORM: FormState = {
   endurSvrty: '',
   certiTestYn: '',
   certiType: '',
+  certiRegulationType: '',
+  certiTypeId: '',
   tempTire: '',
   snowMark: '',
   frt: '',
@@ -138,6 +142,24 @@ const EDIT_GROUPS: EditGroup[] = [
         mono: true,
         type: 'select',
         codeGrp: 'PRODUCT_LINE',
+      },
+    ],
+  },
+  {
+    title: '3-1. 인증 상세 (코드/구분)',
+    description:
+      'CERTI_TYPE_ID는 인증 유형 고유번호(코드), CERTI_REGULATION_TYPE은 인증/법규/내부 시험 구분입니다.',
+    fields: [
+      {
+        key: 'certiRegulationType',
+        column: 'CERTI_REGULATION_TYPE',
+        label: '인증/법규/내부 구분',
+      },
+      {
+        key: 'certiTypeId',
+        column: 'CERTI_TYPE_ID',
+        label: '인증 유형 고유번호',
+        mono: true,
       },
     ],
   },
@@ -329,6 +351,8 @@ export default function StdTestItemEditModal({
         endurSvrty: item.endurSvrty,
         certiTestYn: item.certiTestYn,
         certiType: item.certiType,
+        certiRegulationType: item.certiRegulationType,
+        certiTypeId: item.certiTypeId,
         tempTire: item.tempTire,
         snowMark: item.snowMark,
         frt: item.frt,

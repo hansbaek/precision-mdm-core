@@ -14,6 +14,8 @@ export const STD_FIELD_LABELS: Record<string, string> = {
   endurSvrty: '내구 심각도',
   certiTestYn: '인증시험 여부',
   certiType: '인증 유형',
+  certiRegulationType: '인증/법규/내부 구분',
+  certiTypeId: '인증 유형 고유번호',
   tempTire: '스페어(임시)타이어',
   snowMark: '스노우 마크',
   frt: 'Free Rolling Tire',

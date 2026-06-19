@@ -134,6 +134,8 @@ export interface StdTestItem {
   endurSvrty: string;
   certiTestYn: string;
   certiType: string;
+  certiRegulationType: string;
+  certiTypeId: string;
   tempTire: string;
   snowMark: string;
   frt: string;

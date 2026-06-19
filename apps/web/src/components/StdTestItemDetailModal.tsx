@@ -317,6 +317,26 @@ function MarketSection({ item }: { item: StdTestItem }) {
             </span>
           </div>
         </div>
+        <div className="space-y-1.5 min-w-0">
+          <label className="text-2xs font-bold text-secondary uppercase tracking-wider">
+            CERTI_REGULATION_TYPE · 인증/법규/내부 구분
+          </label>
+          <div className="text-sm font-semibold text-foreground break-words">
+            {item.certiRegulationType || (
+              <span className="text-muted-foreground/60">–</span>
+            )}
+          </div>
+        </div>
+        <div className="space-y-1.5 min-w-0">
+          <label className="text-2xs font-bold text-secondary uppercase tracking-wider">
+            CERTI_TYPE_ID · 인증 유형 고유번호
+          </label>
+          <div className="text-sm font-semibold text-foreground font-mono break-words">
+            {item.certiTypeId || (
+              <span className="text-muted-foreground/60 font-sans">–</span>
+            )}
+          </div>
+        </div>
       </div>
       <div className="p-5 grid grid-cols-1 lg:grid-cols-2 gap-4">
         {MARKET_GROUPS.map((group) => (

@@ -10,6 +10,14 @@ export class UpdateStdTestItemDto {
   @ApiPropertyOptional() @IsString() @IsOptional() endurSvrty?: string;
   @ApiPropertyOptional() @IsString() @IsOptional() certiTestYn?: string;
   @ApiPropertyOptional() @IsString() @IsOptional() certiType?: string;
+  @ApiPropertyOptional({ description: '인증/법규/내부 시험 구분' })
+  @IsString()
+  @IsOptional()
+  certiRegulationType?: string;
+  @ApiPropertyOptional({ description: '인증 유형 고유번호(코드)' })
+  @IsString()
+  @IsOptional()
+  certiTypeId?: string;
   @ApiPropertyOptional() @IsString() @IsOptional() tempTire?: string;
   @ApiPropertyOptional() @IsString() @IsOptional() snowMark?: string;
   @ApiPropertyOptional() @IsString() @IsOptional() frt?: string;
