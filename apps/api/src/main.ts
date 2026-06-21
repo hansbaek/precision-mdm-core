@@ -4,12 +4,32 @@ import { NestFactory } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import helmet from 'helmet';
+import { DataSource } from 'typeorm';
 import { AppModule } from './app.module';
+import {
+  checkPendingMigrations,
+  resolveMigrationGuardMode,
+} from './database/migration-guard';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
   const configService = app.get(ConfigService);
   const isProduction = configService.get<string>('NODE_ENV') === 'production';
+
+  // 부팅 시 미적용 마이그레이션 가드. 운영에서 스키마 드리프트로 인한
+  // '쓰기만 조용히 실패' 류 사고를 막기 위해, 미적용이 있으면 부팅을 중단한다.
+  const guardMode = resolveMigrationGuardMode(
+    configService.get<string>('MIGRATION_GUARD'),
+    isProduction,
+  );
+  const shouldHalt = await checkPendingMigrations(
+    app.get(DataSource),
+    guardMode,
+  );
+  if (shouldHalt) {
+    await app.close();
+    process.exit(1);
+  }
 
   // 운영은 리버스 프록시 뒤에서 동작한다. 첫 홉을 신뢰해야 rate limiting 이
   // 프록시 IP 가 아닌 실제 클라이언트 IP 기준으로 동작한다.

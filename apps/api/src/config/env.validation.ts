@@ -21,6 +21,12 @@ enum AuthProviderKind {
   Sso = 'sso',
 }
 
+enum MigrationGuardKind {
+  Strict = 'strict',
+  Warn = 'warn',
+  Off = 'off',
+}
+
 class EnvironmentVariables {
   @IsEnum(NodeEnvironment)
   @IsOptional()
@@ -102,6 +108,14 @@ class EnvironmentVariables {
   @IsEnum(AuthProviderKind)
   @IsOptional()
   AUTH_PROVIDER?: AuthProviderKind;
+
+  /**
+   * 부팅 시 미적용 마이그레이션 가드 동작. 미설정 시 운영=strict(중단),
+   * 그 외=warn(경고 후 계속). off 는 점검 자체를 생략한다. (main.ts 참조)
+   */
+  @IsEnum(MigrationGuardKind)
+  @IsOptional()
+  MIGRATION_GUARD?: MigrationGuardKind;
 
   /**
    * 허용할 프런트엔드 Origin 목록(콤마 구분). 미설정 시 개발 환경에서는

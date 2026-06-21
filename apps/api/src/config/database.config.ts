@@ -1,3 +1,4 @@
+import { join } from 'node:path';
 import { ConfigService } from '@nestjs/config';
 import { TypeOrmModuleOptions } from '@nestjs/typeorm';
 
@@ -16,6 +17,11 @@ export function getOracleTypeOrmOptions(
     password: configService.getOrThrow<string>('DB_PASSWORD'),
     autoLoadEntities: true,
     synchronize: false,
+    // 마이그레이션은 부팅 시 자동 적용하지 않는다(migrationsRun 미설정). 다만
+    // 런타임에서도 미적용 여부를 점검할 수 있도록 파일·추적 테이블은 인식시킨다.
+    // (data-source.ts 의 CLI 설정과 동일하게 유지할 것)
+    migrations: [join(__dirname, '..', 'database', 'migrations', '*.{js,ts}')],
+    migrationsTableName: 'TMDM_MIGRATIONS',
     logging: configService.get<boolean>('DB_LOGGING', false),
     poolSize: poolMax,
     extra: {
