@@ -7,6 +7,7 @@ import {
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource, QueryRunner } from 'typeorm';
 import * as ExcelJS from 'exceljs';
+import { AuditFieldChange, AuditService } from '../audit/audit.service';
 import {
   AUDIT_COLS,
   MARKET_COLS,
@@ -65,7 +66,10 @@ const NUMERIC_RE = /^-?\d+(\.\d+)?$/;
  */
 @Injectable()
 export class TemplateUploadService {
-  constructor(@InjectDataSource() private readonly dataSource: DataSource) {}
+  constructor(
+    @InjectDataSource() private readonly dataSource: DataSource,
+    private readonly audit: AuditService,
+  ) {}
 
   async preview(buffer: Buffer): Promise<UploadPreviewResponse> {
     const parsed = await this.parseWorkbook(buffer);
@@ -76,7 +80,11 @@ export class TemplateUploadService {
     return this.toPreviewResponse(parsed, dbRows.length, diff);
   }
 
-  async apply(buffer: Buffer, force: boolean): Promise<UploadApplyResponse> {
+  async apply(
+    buffer: Buffer,
+    force: boolean,
+    actorId = 'SYSTEM',
+  ): Promise<UploadApplyResponse> {
     // Parse outside the transaction so malformed files fail fast without locks.
     const parsed = await this.parseWorkbook(buffer);
 
@@ -109,6 +117,10 @@ export class TemplateUploadService {
       await this.applyDeletes(runner, diff);
 
       await runner.commitTransaction();
+
+      // 커밋 후 감사 기록(베스트 에포트). 대량 변경은 요약 + 영향 ID 로 남긴다.
+      await this.recordBulkAudit(actorId, diff);
+
       return {
         applied: true,
         summary: {
@@ -130,6 +142,47 @@ export class TemplateUploadService {
     } finally {
       await runner.release();
     }
+  }
+
+  /** 대량 업로드 1건을 요약 감사로 기록(영향 ID 목록 포함). */
+  private async recordBulkAudit(actorId: string, diff: Diff): Promise<void> {
+    if (
+      diff.inserts.length === 0 &&
+      diff.updates.length === 0 &&
+      diff.deletes.length === 0
+    ) {
+      return;
+    }
+    const changes: AuditFieldChange[] = [];
+    if (diff.inserts.length) {
+      changes.push({
+        column: 'INSERT',
+        before: null,
+        after: `count: ${diff.inserts.length}`,
+      });
+    }
+    if (diff.updates.length) {
+      changes.push({
+        column: 'UPDATE',
+        before: null,
+        after: `ids: ${diff.updates.map((u) => u.id).join(',')}`,
+      });
+    }
+    if (diff.deletes.length) {
+      changes.push({
+        column: 'DELETE',
+        before: null,
+        after: `ids: ${diff.deletes.map((d) => d.id).join(',')}`,
+      });
+    }
+    await this.audit.record({
+      entityType: 'STD_TEST_ITEM',
+      entityId: null,
+      action: 'BULK_UPLOAD',
+      ctx: { actorId, source: 'EXCEL_UPLOAD' },
+      changes,
+      summary: `엑셀 업로드: 추가 ${diff.inserts.length} · 수정 ${diff.updates.length} · 삭제 ${diff.deletes.length}`,
+    });
   }
 
   // ── Parsing ────────────────────────────────────────────────────────────

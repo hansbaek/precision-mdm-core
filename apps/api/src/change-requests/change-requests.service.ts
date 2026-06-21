@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
+import type { AuditContext } from '../audit/audit.service';
 import { UserEntity } from '../auth/entities/user.entity';
 import type { JwtUser } from '../auth/decorators/current-user.decorator';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -80,10 +81,12 @@ export class ChangeRequestsService {
       'approve',
     );
     if (canApprove) {
+      // 승인권자의 직접 편집 — 출처는 API(즉시 반영).
       const result = await this.applyStd(
         input.operation,
         input.targetId ?? null,
         input.payload ?? null,
+        { actorId: user.userId, source: 'API' },
       );
       return { applied: true, result };
     }
@@ -125,10 +128,12 @@ export class ChangeRequestsService {
   /** 승인 — 저장된 payload 를 실제 테이블에 반영하고 요청자에게 알림. */
   async approve(user: JwtUser, crId: number): Promise<ChangeRequestView> {
     const cr = await this.getPending(crId);
+    // 승인 반영 — 출처는 APPROVAL. 행위자는 승인자.
     await this.applyStd(
       cr.operation,
       cr.targetId,
       cr.payload ? (JSON.parse(cr.payload) as CreateStdTestItemDto) : null,
+      { actorId: user.userId, source: 'APPROVAL' },
     );
     cr.status = 'APPROVED';
     cr.reviewerId = user.userId;
@@ -183,10 +188,14 @@ export class ChangeRequestsService {
     operation: ChangeOperation,
     targetId: number | null,
     payload: CreateStdTestItemDto | UpdateStdTestItemDto | null,
+    ctx: AuditContext,
   ): Promise<unknown> {
     switch (operation) {
       case 'CREATE':
-        return this.template.createStdTestItem(payload as CreateStdTestItemDto);
+        return this.template.createStdTestItem(
+          payload as CreateStdTestItemDto,
+          ctx,
+        );
       case 'UPDATE':
         if (targetId == null) {
           throw new ForbiddenException('수정 대상 ID가 없습니다.');
@@ -194,12 +203,13 @@ export class ChangeRequestsService {
         return this.template.updateStdTestItem(
           targetId,
           (payload ?? {}) as UpdateStdTestItemDto,
+          ctx,
         );
       case 'DELETE':
         if (targetId == null) {
           throw new ForbiddenException('삭제 대상 ID가 없습니다.');
         }
-        return this.template.deleteStdTestItem(targetId);
+        return this.template.deleteStdTestItem(targetId, ctx);
     }
   }
 

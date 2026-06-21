@@ -120,9 +120,11 @@ describe('ChangeRequestsService', () => {
 
       const view = await service.approve(APPROVER, 7);
 
-      expect(template.updateStdTestItem).toHaveBeenCalledWith(9, {
-        testItemName: 'Y',
-      });
+      expect(template.updateStdTestItem).toHaveBeenCalledWith(
+        9,
+        { testItemName: 'Y' },
+        { actorId: 'u-app', source: 'APPROVAL' },
+      );
       expect(view.status).toBe('APPROVED');
       expect(view.reviewerId).toBe('u-app');
       expect(notifications.create).toHaveBeenCalledWith(

@@ -1,5 +1,6 @@
 import { DataSource } from 'typeorm';
 import * as ExcelJS from 'exceljs';
+import { AuditService } from '../audit/audit.service';
 import { MARKET_COLS, TABLE_NAME } from './template.constants';
 import { TemplateUploadService } from './template-upload.service';
 
@@ -42,7 +43,8 @@ function makeService(dbRows: RowObj[]): TemplateUploadService {
     return Promise.resolve(dbRows); // SELECT * FROM TABLE_NAME
   });
   const dataSource = { query } as unknown as DataSource;
-  return new TemplateUploadService(dataSource);
+  const audit = { record: jest.fn() } as unknown as AuditService;
+  return new TemplateUploadService(dataSource, audit);
 }
 
 const audit = { CREATED_AT: '20240101', CREATED_BY: 'sys' };

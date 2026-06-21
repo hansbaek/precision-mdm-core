@@ -2,11 +2,27 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
 import * as ExcelJS from 'exceljs';
+import {
+  AuditContext,
+  AuditFieldChange,
+  AuditService,
+} from '../audit/audit.service';
 import { UpdateStdTestItemDto } from './dto/update-std-test-item.dto';
 import { CreateStdTestItemDto } from './dto/create-std-test-item.dto';
 import { MARKET_COLS, TABLE_NAME } from './template.constants';
 
 const PK_SEQUENCE = 'SEQ_TEMPLATE_STD_TEST_ITEM';
+
+/** 감사 대상 엔티티 식별자. */
+const AUDIT_ENTITY = 'STD_TEST_ITEM';
+
+/** 감사 diff 에서 제외할 키(파생/식별/감사 컬럼). */
+const AUDIT_SKIP_KEYS = new Set([
+  'id',
+  'marketFlags',
+  'createdAt',
+  'createdBy',
+]);
 
 type RawRow = Record<string, unknown>;
 
@@ -19,7 +35,10 @@ export interface StdTestItemFilters {
 
 @Injectable()
 export class TemplateService {
-  constructor(@InjectDataSource() private readonly dataSource: DataSource) {}
+  constructor(
+    @InjectDataSource() private readonly dataSource: DataSource,
+    private readonly audit: AuditService,
+  ) {}
 
   private cell(r: RawRow, key: string): string {
     const v = r[key] ?? r[key.toLowerCase()];
@@ -147,7 +166,11 @@ export class TemplateService {
     return this.mapRow(rows[0]);
   }
 
-  async updateStdTestItem(id: number, dto: UpdateStdTestItemDto) {
+  async updateStdTestItem(
+    id: number,
+    dto: UpdateStdTestItemDto,
+    ctx?: AuditContext,
+  ) {
     const existing = await this.findOneStdTestItem(id); // 404 if missing
 
     const setClauses: string[] = [];
@@ -224,10 +247,22 @@ export class TemplateService {
       );
     }
 
-    return this.findOneStdTestItem(id);
+    const updated = await this.findOneStdTestItem(id);
+    const changes = this.diffItem(existing, updated);
+    if (changes.length) {
+      await this.audit.record({
+        entityType: AUDIT_ENTITY,
+        entityId: id,
+        action: 'UPDATE',
+        ctx: this.resolveCtx(ctx),
+        changes,
+        summary: `수정: #${id} ${updated.productLine}/${updated.testItemName}`,
+      });
+    }
+    return updated;
   }
 
-  async createStdTestItem(dto: CreateStdTestItemDto) {
+  async createStdTestItem(dto: CreateStdTestItemDto, ctx?: AuditContext) {
     // New PK from the table sequence (next value is ahead of MAX(TMPLT_ID)).
     const seqRows: { ID: number }[] = await this.dataSource.query(
       `SELECT ${PK_SEQUENCE}.NEXTVAL AS ID FROM DUAL`,
@@ -299,16 +334,85 @@ export class TemplateService {
       values,
     );
 
-    return this.findOneStdTestItem(newId);
+    const created = await this.findOneStdTestItem(newId);
+    await this.audit.record({
+      entityType: AUDIT_ENTITY,
+      entityId: newId,
+      action: 'CREATE',
+      ctx: this.resolveCtx(ctx, createdBy),
+      changes: this.diffItem(null, created),
+      summary: `생성: ${created.productLine}/${created.testItemName}`,
+    });
+    return created;
   }
 
-  async deleteStdTestItem(id: number) {
-    await this.findOneStdTestItem(id); // 404 if missing
+  async deleteStdTestItem(id: number, ctx?: AuditContext) {
+    const existing = await this.findOneStdTestItem(id); // 404 if missing
     await this.dataSource.query(
       `DELETE FROM ${TABLE_NAME} WHERE TMPLT_ID = :1`,
       [id],
     );
+    await this.audit.record({
+      entityType: AUDIT_ENTITY,
+      entityId: id,
+      action: 'DELETE',
+      ctx: this.resolveCtx(ctx),
+      changes: this.diffItem(existing, null),
+      summary: `삭제: #${id} ${existing.productLine}/${existing.testItemName}`,
+    });
     return { deleted: true, id };
+  }
+
+  // ---------- 감사(변경 이력) 보조 ----------
+
+  /** ctx 미지정 시(직접 호출/테스트) 합리적 기본값으로 보정. */
+  private resolveCtx(
+    ctx: AuditContext | undefined,
+    fallbackActor = 'SYSTEM',
+  ): AuditContext {
+    return ctx ?? { actorId: fallbackActor || 'SYSTEM', source: 'API' };
+  }
+
+  /** 감사 비교용 정규화: null/undefined→'', 배열→정렬 콤마, 원시값→문자열. */
+  private auditNorm(v: unknown): string {
+    if (v === null || v === undefined) return '';
+    if (Array.isArray(v)) {
+      return [...(v as unknown[])]
+        .map((x) => this.auditNorm(x))
+        .sort()
+        .join(',');
+    }
+    if (typeof v === 'string') return v;
+    if (typeof v === 'number' || typeof v === 'boolean') return String(v);
+    return ''; // 객체/함수 등은 감사 대상 필드가 아니므로 무시.
+  }
+
+  /**
+   * 매핑된 시험항목 두 스냅샷의 필드 단위 차이. before/after 한쪽이 null 이면
+   * 생성(전체 신규)/삭제(전체 제거)를 의미한다. 파생/식별/감사 컬럼은 제외.
+   */
+  private diffItem(
+    before: Record<string, unknown> | null,
+    after: Record<string, unknown> | null,
+  ): AuditFieldChange[] {
+    const keys = new Set<string>([
+      ...Object.keys(before ?? {}),
+      ...Object.keys(after ?? {}),
+    ]);
+    const changes: AuditFieldChange[] = [];
+    for (const k of keys) {
+      if (AUDIT_SKIP_KEYS.has(k)) continue;
+      const b = before ? this.auditNorm(before[k]) : '';
+      const a = after ? this.auditNorm(after[k]) : '';
+      if (b !== a) {
+        changes.push({
+          column: k,
+          before: before ? b : null,
+          after: after ? a : null,
+        });
+      }
+    }
+    return changes;
   }
 
   async getStats() {

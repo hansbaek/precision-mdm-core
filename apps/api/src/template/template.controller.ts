@@ -165,11 +165,12 @@ export class TemplateController {
     FileInterceptor('file', { limits: { fileSize: UPLOAD_MAX_BYTES } }),
   )
   applyUpload(
+    @CurrentUser() user: JwtUser,
     @UploadedFile() file?: Express.Multer.File,
     @Query('force') force?: string,
   ) {
     if (!file) throw new BadRequestException('file 필드가 필요합니다.');
-    return this.uploadService.apply(file.buffer, force === 'true');
+    return this.uploadService.apply(file.buffer, force === 'true', user.userId);
   }
 
   @Get('download')
