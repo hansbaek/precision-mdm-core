@@ -22,6 +22,7 @@ import { getPreferences } from './hooks/use-preferences-store';
 import { useSystemStatusAlerts } from './hooks/use-system-status-alerts';
 import AnalyticsPage from './pages/analytics-page';
 import ApprovalsPage from './pages/approvals-page';
+import AuditLogPage from './pages/audit-log-page';
 import ClassificationMaster from './pages/classification-master';
 import DashboardPage from './pages/dashboard-page';
 import ReportsPage from './pages/reports-page';
@@ -289,6 +290,7 @@ export default function App() {
       );
     }
     if (activeModule === 'testing-protocols') return <ClassificationMaster />;
+    if (activeModule === 'data-audit') return <AuditLogPage />;
     if (activeModule === 'admin') {
       if (activeTab === 'users') return <UsersAdminPage />;
       return <PermissionMatrixPage />;

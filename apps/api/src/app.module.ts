@@ -8,6 +8,7 @@ import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { AdminModule } from './admin/admin.module';
+import { AuditModule } from './audit/audit.module';
 import { ChangeRequestsModule } from './change-requests/change-requests.module';
 import { getOracleTypeOrmOptions } from './config/database.config';
 import { validateEnvironment } from './config/env.validation';
@@ -37,6 +38,7 @@ import { TestMatchModule } from './test-match/test-match.module';
     AuthModule,
     PermissionsModule,
     AdminModule,
+    AuditModule,
     ChangeRequestsModule,
     EndurSvrtyModule,
     HealthModule,
