@@ -15,6 +15,8 @@ export interface ChangeRequestView {
   reviewComment: string | null;
   createdAt: string;
   reviewedAt: string | null;
+  /** 대기 목록 한정: 제출 이후 대상이 변경/삭제되어 승인 시 차단됨. */
+  stale?: boolean;
 }
 
 /** 내가 제출한 변경요청. */

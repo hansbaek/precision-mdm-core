@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
+import { createHash } from 'node:crypto';
 import * as ExcelJS from 'exceljs';
 import {
   AuditContext,
@@ -459,6 +460,29 @@ export class TemplateService {
       marketCoverage,
       recent,
     };
+  }
+
+  /**
+   * 시험항목 한 행의 콘텐츠 해시(동시성 비교용). 행이 없으면 null.
+   * 파생/식별/감사 컬럼은 제외하고 정규화하므로 의미 있는 변경만 반영된다.
+   */
+  async rowContentHash(id: number): Promise<string | null> {
+    const rows: RawRow[] = await this.dataSource.query(
+      `SELECT * FROM ${TABLE_NAME} WHERE TMPLT_ID = :1`,
+      [id],
+    );
+    if (!rows.length) return null;
+    return this.hashItem(this.mapRow(rows[0]));
+  }
+
+  private hashItem(item: Record<string, unknown>): string {
+    const obj: Record<string, string> = {};
+    for (const [k, v] of Object.entries(item)) {
+      if (AUDIT_SKIP_KEYS.has(k)) continue;
+      obj[k] = this.auditNorm(v);
+    }
+    const json = JSON.stringify(obj, Object.keys(obj).sort());
+    return createHash('sha256').update(json).digest('hex');
   }
 
   async generateTemplateXlsx(): Promise<Buffer> {

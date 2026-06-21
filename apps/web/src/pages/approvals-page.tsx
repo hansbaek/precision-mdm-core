@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
+import { AxiosError } from 'axios';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import {
+  AlertTriangle,
   CheckCircle2,
   ChevronDown,
   ChevronRight,
@@ -238,8 +240,15 @@ export default function ApprovalsPage() {
       }
       toast.success(t('app.approval.approved'));
       await load();
-    } catch {
-      toast.error(t('error.default'));
+    } catch (e) {
+      // 409: 제출 이후 대상이 변경/삭제됨 — 서버 메시지를 그대로 노출하고 새로고침.
+      if (e instanceof AxiosError && e.response?.status === 409) {
+        const msg = (e.response.data as { message?: string })?.message;
+        toast.error(msg ?? '대상이 변경되어 승인할 수 없습니다. 목록을 새로고침합니다.');
+        await load();
+      } else {
+        toast.error(t('error.default'));
+      }
     } finally {
       setBusyId(null);
     }
@@ -294,6 +303,13 @@ export default function ApprovalsPage() {
                   key={cr.crId}
                   cr={cr}
                   fmtDate={fmtDate}
+                  statusBadge={
+                    cr.stale ? (
+                      <Badge className="bg-amber-500/10 text-amber-600 dark:text-amber-400 font-bold shrink-0 gap-1">
+                        <AlertTriangle className="h-3 w-3" /> 대상 변경됨
+                      </Badge>
+                    ) : undefined
+                  }
                   actions={
                     <>
                       <Button

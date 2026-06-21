@@ -28,6 +28,7 @@ describe('ChangeRequestsService', () => {
     createStdTestItem: jest.Mock;
     updateStdTestItem: jest.Mock;
     deleteStdTestItem: jest.Mock;
+    rowContentHash: jest.Mock;
   };
 
   beforeEach(() => {
@@ -45,6 +46,8 @@ describe('ChangeRequestsService', () => {
       createStdTestItem: jest.fn().mockResolvedValue({ id: 1 }),
       updateStdTestItem: jest.fn().mockResolvedValue({ id: 2 }),
       deleteStdTestItem: jest.fn().mockResolvedValue({ deleted: true }),
+      // 기본: 대상 행이 제출 시점과 동일(해시 일치) — 승인 통과.
+      rowContentHash: jest.fn().mockResolvedValue('basehash'),
     };
 
     service = new ChangeRequestsService(
@@ -175,6 +178,75 @@ describe('ChangeRequestsService', () => {
       await expect(service.reject(APPROVER, 1)).rejects.toBeInstanceOf(
         ConflictException,
       );
+    });
+  });
+
+  describe('승인 동시성(stale) 가드', () => {
+    const pendingUpdate = {
+      crId: 7,
+      operation: 'UPDATE',
+      targetId: 9,
+      payload: JSON.stringify({ testItemName: 'Y' }),
+      requesterId: 'u-req',
+      status: 'PENDING',
+      summary: '수정요청',
+      baseHash: 'basehash',
+    };
+
+    it('제출 이후 대상이 변경되면 승인 차단(409), 적용 안 함', async () => {
+      crRepo.findOne.mockResolvedValue({ ...pendingUpdate });
+      template.rowContentHash.mockResolvedValue('CHANGED'); // 해시 불일치
+
+      await expect(service.approve(APPROVER, 7)).rejects.toBeInstanceOf(
+        ConflictException,
+      );
+      expect(template.updateStdTestItem).not.toHaveBeenCalled();
+    });
+
+    it('대상이 이미 삭제되었으면 승인 차단(409)', async () => {
+      crRepo.findOne.mockResolvedValue({ ...pendingUpdate });
+      template.rowContentHash.mockResolvedValue(null); // 행 없음
+
+      await expect(service.approve(APPROVER, 7)).rejects.toBeInstanceOf(
+        ConflictException,
+      );
+      expect(template.updateStdTestItem).not.toHaveBeenCalled();
+    });
+
+    it('해시가 일치하면 정상 승인된다', async () => {
+      crRepo.findOne.mockResolvedValue({ ...pendingUpdate });
+      template.rowContentHash.mockResolvedValue('basehash'); // 일치
+
+      const view = await service.approve(APPROVER, 7);
+      expect(template.updateStdTestItem).toHaveBeenCalled();
+      expect(view.status).toBe('APPROVED');
+    });
+
+    it('비승인권자 UPDATE 제출 시 대상 해시를 저장한다', async () => {
+      permissions.can.mockResolvedValue(false);
+      permRepo.find.mockResolvedValue([]);
+      userRepo.find.mockResolvedValue([]);
+      template.rowContentHash.mockResolvedValue('h-at-submit');
+
+      await service.submitStdChange(USER, {
+        operation: 'UPDATE',
+        targetId: 5,
+        payload: { testItemName: 'X' } as never,
+        summary: '수정',
+      });
+
+      expect(template.rowContentHash).toHaveBeenCalledWith(5);
+      expect(crRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ baseHash: 'h-at-submit' }),
+      );
+    });
+
+    it('listPending 은 변경된 대상을 stale 로 표시한다', async () => {
+      crRepo.find.mockResolvedValue([{ ...pendingUpdate }]);
+      template.rowContentHash.mockResolvedValue('CHANGED');
+
+      const [view] = await service.listPending();
+      expect(view.stale).toBe(true);
     });
   });
 });

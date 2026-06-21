@@ -65,6 +65,13 @@ export class ChangeRequestEntity {
   })
   reviewComment: string | null;
 
+  /**
+   * 제출 시점 대상 행의 콘텐츠 해시(UPDATE/DELETE 만). 승인 시 현재 행 해시와
+   * 비교해 제출 이후 변경되었으면 승인을 차단한다. CREATE 는 null.
+   */
+  @Column({ name: 'BASE_HASH', type: 'varchar', length: 64, nullable: true })
+  baseHash: string | null;
+
   @CreateDateColumn({ name: 'CREATED_AT', type: 'timestamp' })
   createdAt: Date;
 

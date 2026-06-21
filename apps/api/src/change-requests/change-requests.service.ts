@@ -45,6 +45,8 @@ export interface ChangeRequestView {
   reviewComment: string | null;
   createdAt: Date;
   reviewedAt: Date | null;
+  /** 대기 목록 한정: 제출 이후 대상 행이 바뀌었으면 true(승인 시 차단됨). */
+  stale?: boolean;
 }
 
 @Injectable()
@@ -91,6 +93,13 @@ export class ChangeRequestsService {
       return { applied: true, result };
     }
 
+    // UPDATE/DELETE 는 제출 시점 대상 행의 콘텐츠 해시를 저장해 둔다.
+    const baseHash =
+      (input.operation === 'UPDATE' || input.operation === 'DELETE') &&
+      input.targetId != null
+        ? await this.template.rowContentHash(input.targetId)
+        : null;
+
     const cr = await this.crRepo.save(
       this.crRepo.create({
         targetType: 'STD_TEST_ITEM',
@@ -100,19 +109,25 @@ export class ChangeRequestsService {
         summary: input.summary,
         requesterId: user.userId,
         status: 'PENDING',
+        baseHash,
       }),
     );
     await this.notifyApprovers(cr);
     return { applied: false, crId: cr.crId };
   }
 
-  /** 승인 대기 목록(승인권자용). */
+  /** 승인 대기 목록(승인권자용). 각 항목에 stale(대상 변경 여부) 포함. */
   async listPending(): Promise<ChangeRequestView[]> {
     const rows = await this.crRepo.find({
       where: { status: 'PENDING' },
       order: { createdAt: 'ASC' },
     });
-    return rows.map((r) => this.toView(r));
+    return Promise.all(
+      rows.map(async (r) => ({
+        ...this.toView(r),
+        stale: await this.isStale(r),
+      })),
+    );
   }
 
   /** 내가 제출한 변경요청(요청자용). */
@@ -128,6 +143,7 @@ export class ChangeRequestsService {
   /** 승인 — 저장된 payload 를 실제 테이블에 반영하고 요청자에게 알림. */
   async approve(user: JwtUser, crId: number): Promise<ChangeRequestView> {
     const cr = await this.getPending(crId);
+    await this.ensureNotStale(cr); // 제출 이후 대상 변경 시 409
     // 승인 반영 — 출처는 APPROVAL. 행위자는 승인자.
     await this.applyStd(
       cr.operation,
@@ -182,6 +198,34 @@ export class ChangeRequestsService {
       throw new ConflictException('이미 처리된 변경요청입니다.');
     }
     return cr;
+  }
+
+  /**
+   * 제출 이후 대상 행이 바뀌었으면 승인 차단(409). 삭제된 경우와 내용이 바뀐
+   * 경우를 구분해 안내한다. CREATE/해시미보유(레거시)는 통과.
+   */
+  private async ensureNotStale(cr: ChangeRequestEntity): Promise<void> {
+    if (cr.operation === 'CREATE' || cr.targetId == null) return;
+    const current = await this.template.rowContentHash(cr.targetId);
+    if (current === null) {
+      throw new ConflictException(
+        '대상 항목이 이미 삭제되어 승인할 수 없습니다. 변경요청을 반려하세요.',
+      );
+    }
+    if (cr.baseHash && current !== cr.baseHash) {
+      throw new ConflictException(
+        '대상 항목이 제출 이후 변경되었습니다. 변경요청을 반려하고 최신 기준으로 다시 제출하세요.',
+      );
+    }
+  }
+
+  /** 대기 목록 표시용: 대상이 제출 이후 변경/삭제되었는가. */
+  private async isStale(cr: ChangeRequestEntity): Promise<boolean> {
+    if (cr.operation === 'CREATE' || cr.targetId == null || !cr.baseHash) {
+      return false;
+    }
+    const current = await this.template.rowContentHash(cr.targetId);
+    return current === null || current !== cr.baseHash;
   }
 
   private applyStd(
