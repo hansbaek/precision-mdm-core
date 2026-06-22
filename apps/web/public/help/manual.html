@@ -381,6 +381,39 @@
     <p>제품코드(<strong>mcode</strong>)를 입력하면 타이어 속성을 도출해 수행해야 할 시험 목록을 표시합니다.
       조회한 mcode는 보고서 탭과 공유됩니다.</p>
 
+    <h4>4.2.1 매칭 판정 방식</h4>
+    <p>각 시험 기준 행이 조회한 타이어에 <strong>적용되는지</strong>를 항목별로 따져 결정합니다. 항목 하나의 판정은
+      세 가지입니다.</p>
+    <table>
+      <tr><th>판정</th><th>의미</th><th>결과 영향</th></tr>
+      <tr><td><strong>충족(pass)</strong></td><td>조건을 만족</td><td>통과 — 추출 이유로 표시</td></tr>
+      <tr><td><strong>위배(fail)</strong></td><td>조건에 어긋남</td><td><strong>해당 시험 제외</strong> — 한 항목이라도 위배면 탈락</td></tr>
+      <tr><td><strong>미평가(unknown)</strong></td><td>타이어 값이 없거나 해석 불가</td><td>제외하지 않고 <strong>미평가</strong>로만 표시</td></tr>
+    </table>
+    <div class="callout note"><span class="ico">ℹ️</span><p><strong>두 가지 원칙</strong> — ①기준 행의 조건칸이
+      <strong>비어 있으면 조건 없음(전체 적용)</strong>으로 보아 통과시킵니다. ②정보가 부족한 <strong>미평가 항목은
+      시험을 떨어뜨리지 않습니다</strong>(부족한 정보로 배제하지 않음).</p></div>
+
+    <p>먼저 아래 <strong>두 게이트</strong>를 통과해야 하고, 그다음 세부 조건을 평가합니다.</p>
+    <ul>
+      <li><strong>제품 라인</strong> — 반드시 정확히 일치해야 합니다(불일치 시 즉시 제외).</li>
+      <li><strong>적용 시장</strong> — 기준 행에 지정된 시장이 타이어의 대표시장과 하나라도 겹쳐야 합니다.
+        기준 행에 시장 지정이 없으면 전체 적용으로 봅니다.</li>
+    </ul>
+
+    <p>게이트 통과 후 평가하는 세부 조건과 비교 방식입니다.</p>
+    <table>
+      <tr><th>항목</th><th>판정 방식</th></tr>
+      <tr><td>속도 기호(SS)·TL 지시자·레이디얼/바이어스·사이즈 샘플</td><td>기준의 목록 안에 타이어 값이 들어 있으면 충족</td></tr>
+      <tr><td>림 인치·하중 지수(LI)·플라이 레이팅·그루브 깊이</td><td>숫자 비교(<code>&lt;=121</code>, <code>&gt;12</code>, <code>17.5</code> 등 연산자 해석)</td></tr>
+      <tr><td>POR·Free Rolling Tire(FRT)·스노우 마크</td><td>양성/음성 플래그 — 기준이 양성이면 타이어도 해당, 음성이면 미해당이어야 충족</td></tr>
+      <tr><td>TBR 포지션</td><td>포지션 일치. <code>A</code>(전 포지션)는 와일드카드로 항상 충족</td></tr>
+      <tr><td>TBR 세그먼트</td><td>기준 목록과 타이어 세그먼트가 하나라도 겹치면 충족</td></tr>
+    </table>
+    <div class="callout note"><span class="ico">ℹ️</span><p><strong>보류 항목</strong> — 스페어(임시)타이어,
+      UTQG, 신규 사이즈 여부, TBR 3번 그루브는 타이어측 소스가 아직 연결되지 않아 <strong>매칭에서 제외</strong>되며,
+      기준 행에 값이 있으면 <strong>미평가(소스 미연결)</strong>로만 보입니다.</p></div>
+
     <h3>4.3 현황 분석 (Analytics)</h3>
     <p>기준 마스터 데이터의 집계 통계를 지표로 확인합니다.</p>
 
