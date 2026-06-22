@@ -94,11 +94,17 @@ export class RefreshTokensService {
     return { userId: row.userId, refresh };
   }
 
-  /** 로그아웃: 제출된 토큰을 폐기(존재하지 않아도 조용히 통과). */
-  async revoke(presented: string): Promise<void> {
+  /**
+   * 로그아웃: 제출된 토큰을 폐기(존재하지 않아도 조용히 통과).
+   * @returns 폐기된 토큰의 사용자 ID(감사 기록용). 토큰이 없으면 null.
+   */
+  async revoke(presented: string): Promise<string | null> {
     const [tokenId] = presented.split('.');
-    if (!tokenId) return;
+    if (!tokenId) return null;
+    const row = await this.repo.findOne({ where: { tokenId } });
+    if (!row) return null;
     await this.repo.update({ tokenId }, { revokedYn: 'Y' });
+    return row.userId;
   }
 
   /** 사용자의 모든 토큰 폐기(관리자 강제 로그아웃 / 재사용 탐지 시). */

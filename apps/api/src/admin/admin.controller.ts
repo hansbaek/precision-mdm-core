@@ -9,6 +9,8 @@ import {
   Put,
 } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import type { JwtUser } from '../auth/decorators/current-user.decorator';
 import { RequirePermission } from '../permissions/decorators/require-permission.decorator';
 import { AdminService } from './admin.service';
 import { UpdatePermissionsDto } from './dto/permissions.dto';
@@ -31,22 +33,29 @@ export class AdminController {
   @Post('roles')
   @RequirePermission('admin', 'create')
   @ApiOperation({ summary: '역할 생성' })
-  createRole(@Body() dto: CreateRoleDto) {
-    return this.admin.createRole(dto);
+  createRole(@CurrentUser() user: JwtUser, @Body() dto: CreateRoleDto) {
+    return this.admin.createRole(dto, user.userId);
   }
 
   @Patch('roles/:roleId')
   @RequirePermission('admin', 'update')
   @ApiOperation({ summary: '역할 수정' })
-  updateRole(@Param('roleId') roleId: string, @Body() dto: UpdateRoleDto) {
-    return this.admin.updateRole(roleId, dto);
+  updateRole(
+    @CurrentUser() user: JwtUser,
+    @Param('roleId') roleId: string,
+    @Body() dto: UpdateRoleDto,
+  ) {
+    return this.admin.updateRole(roleId, dto, user.userId);
   }
 
   @Delete('roles/:roleId')
   @RequirePermission('admin', 'delete')
   @ApiOperation({ summary: '역할 삭제' })
-  async deleteRole(@Param('roleId') roleId: string) {
-    await this.admin.deleteRole(roleId);
+  async deleteRole(
+    @CurrentUser() user: JwtUser,
+    @Param('roleId') roleId: string,
+  ) {
+    await this.admin.deleteRole(roleId, user.userId);
     return { ok: true };
   }
 
@@ -70,10 +79,11 @@ export class AdminController {
   @RequirePermission('admin', 'update')
   @ApiOperation({ summary: '역할 권한 매트릭스 저장' })
   updateRolePermissions(
+    @CurrentUser() user: JwtUser,
     @Param('roleId') roleId: string,
     @Body() dto: UpdatePermissionsDto,
   ) {
-    return this.admin.updateRolePermissions(roleId, dto);
+    return this.admin.updateRolePermissions(roleId, dto, user.userId);
   }
 
   // ---------- Users ----------
@@ -87,26 +97,30 @@ export class AdminController {
   @Post('users')
   @RequirePermission('admin', 'create')
   @ApiOperation({ summary: '사용자 생성' })
-  createUser(@Body() dto: CreateUserDto) {
-    return this.admin.createUser(dto);
+  createUser(@CurrentUser() user: JwtUser, @Body() dto: CreateUserDto) {
+    return this.admin.createUser(dto, user.userId);
   }
 
   @Patch('users/:userId')
   @RequirePermission('admin', 'update')
   @ApiOperation({ summary: '사용자 수정' })
   async updateUser(
+    @CurrentUser() user: JwtUser,
     @Param('userId') userId: string,
     @Body() dto: UpdateUserDto,
   ) {
-    await this.admin.updateUser(userId, dto);
+    await this.admin.updateUser(userId, dto, user.userId);
     return { ok: true };
   }
 
   @Delete('users/:userId')
   @RequirePermission('admin', 'delete')
   @ApiOperation({ summary: '사용자 삭제' })
-  async deleteUser(@Param('userId') userId: string) {
-    await this.admin.deleteUser(userId);
+  async deleteUser(
+    @CurrentUser() user: JwtUser,
+    @Param('userId') userId: string,
+  ) {
+    await this.admin.deleteUser(userId, user.userId);
     return { ok: true };
   }
 
@@ -114,10 +128,11 @@ export class AdminController {
   @RequirePermission('admin', 'update')
   @ApiOperation({ summary: '사용자 비밀번호 재설정' })
   async resetPassword(
+    @CurrentUser() user: JwtUser,
     @Param('userId') userId: string,
     @Body() dto: ResetPasswordDto,
   ) {
-    await this.admin.resetPassword(userId, dto.password);
+    await this.admin.resetPassword(userId, dto.password, user.userId);
     return { ok: true };
   }
 }

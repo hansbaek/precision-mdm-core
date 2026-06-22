@@ -18,12 +18,20 @@ const ACTION_LABEL: Record<AuditAction, string> = {
   UPDATE: '수정',
   DELETE: '삭제',
   BULK_UPLOAD: '엑셀 업로드',
+  LOGIN: '로그인',
+  LOGIN_FAILED: '로그인 실패',
+  LOGOUT: '로그아웃',
+  PASSWORD_CHANGE: '비밀번호 변경',
+  PASSWORD_RESET: '비밀번호 재설정',
+  PERM_CHANGE: '권한 변경',
 };
 
 const SOURCE_LABEL: Record<AuditSource, string> = {
   API: '직접 편집',
   APPROVAL: '승인 반영',
   EXCEL_UPLOAD: '엑셀 업로드',
+  AUTH: '본인 인증',
+  ADMIN: '관리자 콘솔',
 };
 
 const ACTION_CLASS: Record<AuditAction, string> = {
@@ -31,6 +39,12 @@ const ACTION_CLASS: Record<AuditAction, string> = {
   UPDATE: 'bg-info-container text-info border-info/20',
   DELETE: 'bg-destructive/10 text-destructive border-destructive/20',
   BULK_UPLOAD: 'bg-warning-container text-warning border-warning/20',
+  LOGIN: 'bg-muted text-secondary border-border',
+  LOGIN_FAILED: 'bg-destructive/10 text-destructive border-destructive/20',
+  LOGOUT: 'bg-muted text-muted-foreground border-border',
+  PASSWORD_CHANGE: 'bg-info-container text-info border-info/20',
+  PASSWORD_RESET: 'bg-warning-container text-warning border-warning/20',
+  PERM_CHANGE: 'bg-warning-container text-warning border-warning/20',
 };
 
 const fmtTime = (iso: string) => {
@@ -40,7 +54,20 @@ const fmtTime = (iso: string) => {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
 };
 
-const colLabel = (col: string) => STD_FIELD_LABELS[col] ?? col;
+// 사용자/역할 관리 이벤트의 필드명(영문) → 한글 라벨. 표준항목 라벨에 없으면 사용.
+const ADMIN_FIELD_LABELS: Record<string, string> = {
+  userNm: '이름',
+  userNmEng: '이름(영문)',
+  teamNm: '팀',
+  teamNmEng: '팀(영문)',
+  roleId: '역할',
+  useYn: '사용 여부',
+  roleNm: '역할명',
+  sortOrder: '정렬 순서',
+};
+
+const colLabel = (col: string) =>
+  STD_FIELD_LABELS[col] ?? ADMIN_FIELD_LABELS[col] ?? col;
 
 export default function AuditLogPage() {
   const [logs, setLogs] = useState<AuditLog[]>([]);
@@ -153,6 +180,12 @@ export default function AuditLogPage() {
             <option value="UPDATE">수정</option>
             <option value="DELETE">삭제</option>
             <option value="BULK_UPLOAD">엑셀 업로드</option>
+            <option value="LOGIN">로그인</option>
+            <option value="LOGIN_FAILED">로그인 실패</option>
+            <option value="LOGOUT">로그아웃</option>
+            <option value="PASSWORD_CHANGE">비밀번호 변경</option>
+            <option value="PASSWORD_RESET">비밀번호 재설정</option>
+            <option value="PERM_CHANGE">권한 변경</option>
           </select>
         </Field>
         <Field label="출처">
@@ -165,6 +198,8 @@ export default function AuditLogPage() {
             <option value="API">직접 편집</option>
             <option value="APPROVAL">승인 반영</option>
             <option value="EXCEL_UPLOAD">엑셀 업로드</option>
+            <option value="AUTH">본인 인증</option>
+            <option value="ADMIN">관리자 콘솔</option>
           </select>
         </Field>
         <Field label="행위자(사번)">

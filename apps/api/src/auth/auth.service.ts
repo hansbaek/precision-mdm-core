@@ -3,6 +3,7 @@ import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcryptjs';
 import { Repository } from 'typeorm';
+import { AuditService } from '../audit/audit.service';
 import { PermissionsService } from '../permissions/permissions.service';
 import { MenuPermission } from '../permissions/permissions.types';
 import { UserEntity } from './entities/user.entity';
@@ -49,6 +50,7 @@ export class AuthService {
     private readonly jwt: JwtService,
     private readonly permissions: PermissionsService,
     private readonly refreshTokens: RefreshTokensService,
+    private readonly audit: AuditService,
     @InjectRepository(UserEntity)
     private readonly userRepo: Repository<UserEntity>,
   ) {}
@@ -60,8 +62,25 @@ export class AuthService {
     userAgent?: string,
   ): Promise<AuthSession | null> {
     const authed = await this.authProvider.authenticate(userId, password);
-    if (!authed) return null;
-    return this.buildSession(authed.userId, userAgent);
+    if (!authed) {
+      await this.audit.record({
+        entityType: 'USER',
+        entityId: userId,
+        action: 'LOGIN_FAILED',
+        ctx: { actorId: userId, source: 'AUTH' },
+        summary: this.uaSummary('로그인 실패', userAgent),
+      });
+      return null;
+    }
+    const session = await this.buildSession(authed.userId, userAgent);
+    await this.audit.record({
+      entityType: 'USER',
+      entityId: authed.userId,
+      action: 'LOGIN',
+      ctx: { actorId: authed.userId, source: 'AUTH' },
+      summary: this.uaSummary('로그인', userAgent),
+    });
+    return session;
   }
 
   /**
@@ -81,7 +100,15 @@ export class AuthService {
 
   /** 로그아웃: 제출된 리프레시 토큰을 폐기한다. */
   async logout(presentedRefreshToken: string): Promise<void> {
-    await this.refreshTokens.revoke(presentedRefreshToken);
+    const userId = await this.refreshTokens.revoke(presentedRefreshToken);
+    if (userId) {
+      await this.audit.record({
+        entityType: 'USER',
+        entityId: userId,
+        action: 'LOGOUT',
+        ctx: { actorId: userId, source: 'AUTH' },
+      });
+    }
   }
 
   /** 토큰 검증 후 최신 프로필/권한 재조회 (역할 변경 즉시 반영). */
@@ -153,7 +180,20 @@ export class AuthService {
     }
     user.passwordHash = await bcrypt.hash(newPassword, 10);
     await this.userRepo.save(user);
+    await this.audit.record({
+      entityType: 'USER',
+      entityId: userId,
+      action: 'PASSWORD_CHANGE',
+      ctx: { actorId: userId, source: 'AUTH' },
+      summary: '본인 비밀번호 변경',
+    });
     return null;
+  }
+
+  /** User-Agent 를 곁들인 짧은 감사 요약(길면 잘라낸다). */
+  private uaSummary(label: string, userAgent?: string): string {
+    const ua = userAgent?.trim();
+    return ua ? `${label} · ${ua.slice(0, 200)}` : label;
   }
 
   /**

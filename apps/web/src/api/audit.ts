@@ -1,7 +1,22 @@
 import { axiosInstance } from '.';
 
-export type AuditAction = 'CREATE' | 'UPDATE' | 'DELETE' | 'BULK_UPLOAD';
-export type AuditSource = 'API' | 'APPROVAL' | 'EXCEL_UPLOAD';
+export type AuditAction =
+  | 'CREATE'
+  | 'UPDATE'
+  | 'DELETE'
+  | 'BULK_UPLOAD'
+  | 'LOGIN'
+  | 'LOGIN_FAILED'
+  | 'LOGOUT'
+  | 'PASSWORD_CHANGE'
+  | 'PASSWORD_RESET'
+  | 'PERM_CHANGE';
+export type AuditSource =
+  | 'API'
+  | 'APPROVAL'
+  | 'EXCEL_UPLOAD'
+  | 'AUTH'
+  | 'ADMIN';
 
 export interface AuditFieldChange {
   column: string;

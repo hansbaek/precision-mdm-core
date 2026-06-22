@@ -6,10 +6,29 @@ import {
   PrimaryGeneratedColumn,
 } from 'typeorm';
 
-export type AuditAction = 'CREATE' | 'UPDATE' | 'DELETE' | 'BULK_UPLOAD';
+export type AuditAction =
+  | 'CREATE'
+  | 'UPDATE'
+  | 'DELETE'
+  | 'BULK_UPLOAD'
+  // 보안·관리 이벤트(3단계)
+  | 'LOGIN'
+  | 'LOGIN_FAILED'
+  | 'LOGOUT'
+  | 'PASSWORD_CHANGE'
+  | 'PASSWORD_RESET'
+  | 'PERM_CHANGE';
 
-/** 변경 출처. 직접 편집/승인 반영/엑셀 업로드. */
-export type AuditSource = 'API' | 'APPROVAL' | 'EXCEL_UPLOAD';
+/**
+ * 변경 출처. 직접 편집(API)/승인 반영(APPROVAL)/엑셀 업로드(EXCEL_UPLOAD)/
+ * 본인 인증(AUTH)/관리자 콘솔(ADMIN).
+ */
+export type AuditSource =
+  | 'API'
+  | 'APPROVAL'
+  | 'EXCEL_UPLOAD'
+  | 'AUTH'
+  | 'ADMIN';
 
 /**
  * 변경 이력(감사 로그). 마스터 데이터의 모든 쓰기 경로에서 누가/언제/무엇을
@@ -28,7 +47,7 @@ export class AuditLogEntity {
   @Column({ name: 'ENTITY_ID', type: 'varchar', length: 100, nullable: true })
   entityId: string | null;
 
-  @Column({ name: 'ACTION', type: 'varchar', length: 10 })
+  @Column({ name: 'ACTION', type: 'varchar', length: 20 })
   action: AuditAction;
 
   @Index('IX_TMDM_AUDIT_ACTOR')

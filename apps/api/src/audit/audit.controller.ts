@@ -20,12 +20,13 @@ export class AuditController {
   @ApiQuery({
     name: 'action',
     required: false,
-    description: 'CREATE/UPDATE/DELETE/BULK_UPLOAD',
+    description:
+      'CREATE/UPDATE/DELETE/BULK_UPLOAD/LOGIN/LOGIN_FAILED/LOGOUT/PASSWORD_CHANGE/PASSWORD_RESET/PERM_CHANGE',
   })
   @ApiQuery({
     name: 'source',
     required: false,
-    description: 'API/APPROVAL/EXCEL_UPLOAD',
+    description: 'API/APPROVAL/EXCEL_UPLOAD/AUTH/ADMIN',
   })
   @ApiQuery({ name: 'from', required: false, description: 'ISO 일시(이상)' })
   @ApiQuery({ name: 'to', required: false, description: 'ISO 일시(이하)' })

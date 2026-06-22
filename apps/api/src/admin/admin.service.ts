@@ -7,6 +7,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcryptjs';
 import { Repository } from 'typeorm';
+import { AuditFieldChange, AuditService } from '../audit/audit.service';
 import { RoleEntity } from '../auth/entities/role.entity';
 import { UserEntity } from '../auth/entities/user.entity';
 import { MenuEntity } from '../permissions/entities/menu.entity';
@@ -21,6 +22,20 @@ import { CreateUserDto, UpdateUserDto } from './dto/user.dto';
 const yn = (b: boolean) => (b ? 'Y' : 'N');
 const isY = (v?: string) => v === 'Y';
 
+/** 객체 두 개에서 지정한 키들의 값이 달라진 항목만 필드 변경으로 추린다. */
+const diffFields = <T extends Record<string, unknown>>(
+  before: T,
+  after: T,
+  keys: Array<keyof T>,
+): AuditFieldChange[] =>
+  keys
+    .filter((k) => before[k] !== after[k])
+    .map((k) => ({
+      column: String(k),
+      before: before[k] == null ? null : String(before[k]),
+      after: after[k] == null ? null : String(after[k]),
+    }));
+
 @Injectable()
 export class AdminService {
   constructor(
@@ -32,6 +47,7 @@ export class AdminService {
     private readonly menuRepo: Repository<MenuEntity>,
     @InjectRepository(RoleMenuPermEntity)
     private readonly permRepo: Repository<RoleMenuPermEntity>,
+    private readonly audit: AuditService,
   ) {}
 
   // ---------- Roles ----------
@@ -39,7 +55,7 @@ export class AdminService {
     return this.roleRepo.find({ order: { sortOrder: 'ASC', roleId: 'ASC' } });
   }
 
-  async createRole(dto: CreateRoleDto): Promise<RoleEntity> {
+  async createRole(dto: CreateRoleDto, actorId: string): Promise<RoleEntity> {
     const exists = await this.roleRepo.findOne({
       where: { roleId: dto.roleId },
     });
@@ -51,21 +67,47 @@ export class AdminService {
       sortOrder: dto.sortOrder ?? 50,
       useYn: 'Y',
     });
-    return this.roleRepo.save(role);
+    const saved = await this.roleRepo.save(role);
+    await this.audit.record({
+      entityType: 'ROLE',
+      entityId: saved.roleId,
+      action: 'CREATE',
+      ctx: { actorId, source: 'ADMIN' },
+      summary: `역할 생성: ${saved.roleNm} (${saved.roleId})`,
+    });
+    return saved;
   }
 
-  async updateRole(roleId: string, dto: UpdateRoleDto): Promise<RoleEntity> {
+  async updateRole(
+    roleId: string,
+    dto: UpdateRoleDto,
+    actorId: string,
+  ): Promise<RoleEntity> {
     const role = await this.roleRepo.findOne({ where: { roleId } });
     if (!role) throw new NotFoundException('역할을 찾을 수 없습니다.');
+    const before = {
+      roleNm: role.roleNm,
+      sortOrder: role.sortOrder,
+      useYn: role.useYn,
+    };
     Object.assign(role, {
       roleNm: dto.roleNm ?? role.roleNm,
       sortOrder: dto.sortOrder ?? role.sortOrder,
       useYn: dto.useYn ?? role.useYn,
     });
-    return this.roleRepo.save(role);
+    const saved = await this.roleRepo.save(role);
+    await this.audit.record({
+      entityType: 'ROLE',
+      entityId: roleId,
+      action: 'UPDATE',
+      ctx: { actorId, source: 'ADMIN' },
+      changes: diffFields(before, saved, ['roleNm', 'sortOrder', 'useYn']),
+      summary: `역할 수정: ${saved.roleNm} (${roleId})`,
+    });
+    return saved;
   }
 
-  async deleteRole(roleId: string): Promise<void> {
+  async deleteRole(roleId: string, actorId: string): Promise<void> {
     const role = await this.roleRepo.findOne({ where: { roleId } });
     if (!role) throw new NotFoundException('역할을 찾을 수 없습니다.');
     if (isY(role.isSystemYn)) {
@@ -79,6 +121,13 @@ export class AdminService {
     }
     await this.permRepo.delete({ roleId });
     await this.roleRepo.delete({ roleId });
+    await this.audit.record({
+      entityType: 'ROLE',
+      entityId: roleId,
+      action: 'DELETE',
+      ctx: { actorId, source: 'ADMIN' },
+      summary: `역할 삭제: ${role.roleNm} (${roleId})`,
+    });
   }
 
   // ---------- Menus ----------
@@ -113,10 +162,19 @@ export class AdminService {
   async updateRolePermissions(
     roleId: string,
     dto: UpdatePermissionsDto,
+    actorId: string,
   ): Promise<MenuPermissionInput[]> {
     const role = await this.roleRepo.findOne({ where: { roleId } });
     if (!role) throw new NotFoundException('역할을 찾을 수 없습니다.');
     const validMenuIds = new Set((await this.listMenus()).map((m) => m.menuId));
+
+    // 변경 전 스냅샷(메뉴별 권한 요약) — 감사 diff 용.
+    const beforeByMenu = new Map(
+      (await this.getRolePermissions(roleId)).map((p) => [
+        p.menuId,
+        this.permSummary(p),
+      ]),
+    );
 
     for (const p of dto.permissions) {
       if (!validMenuIds.has(p.menuId)) continue;
@@ -133,7 +191,43 @@ export class AdminService {
         ['roleId', 'menuId'],
       );
     }
-    return this.getRolePermissions(roleId);
+
+    const after = await this.getRolePermissions(roleId);
+    const changes: AuditFieldChange[] = [];
+    for (const p of after) {
+      const before = beforeByMenu.get(p.menuId) ?? '';
+      const now = this.permSummary(p);
+      if (before !== now) {
+        changes.push({
+          column: p.menuId,
+          before: before || null,
+          after: now || null,
+        });
+      }
+    }
+    if (changes.length) {
+      await this.audit.record({
+        entityType: 'ROLE',
+        entityId: roleId,
+        action: 'PERM_CHANGE',
+        ctx: { actorId, source: 'ADMIN' },
+        changes,
+        summary: `권한 변경: ${role.roleNm} (${roleId}) — ${changes.length}개 메뉴`,
+      });
+    }
+    return after;
+  }
+
+  /** 메뉴 권한 플래그를 사람이 읽을 약어로 요약(없으면 '-'). */
+  private permSummary(p: MenuPermissionInput): string {
+    const flags = [
+      p.canView && 'V',
+      p.canCreate && 'C',
+      p.canUpdate && 'U',
+      p.canDelete && 'D',
+      p.canApprove && 'A',
+    ].filter(Boolean);
+    return flags.length ? flags.join('') : '-';
   }
 
   // ---------- Users ----------
@@ -151,7 +245,10 @@ export class AdminService {
     });
   }
 
-  async createUser(dto: CreateUserDto): Promise<{ userId: string }> {
+  async createUser(
+    dto: CreateUserDto,
+    actorId: string,
+  ): Promise<{ userId: string }> {
     const exists = await this.userRepo.findOne({
       where: { userId: dto.userId },
     });
@@ -169,10 +266,21 @@ export class AdminService {
       useYn: 'Y',
     } as Partial<UserEntity>);
     await this.userRepo.save(user);
+    await this.audit.record({
+      entityType: 'USER',
+      entityId: dto.userId,
+      action: 'CREATE',
+      ctx: { actorId, source: 'ADMIN' },
+      summary: `사용자 생성: ${dto.userNm} (${dto.userId}) · 역할 ${dto.roleId}`,
+    });
     return { userId: dto.userId };
   }
 
-  async updateUser(userId: string, dto: UpdateUserDto): Promise<void> {
+  async updateUser(
+    userId: string,
+    dto: UpdateUserDto,
+    actorId: string,
+  ): Promise<void> {
     const user = await this.userRepo.findOne({ where: { userId } });
     if (!user) throw new NotFoundException('사용자를 찾을 수 없습니다.');
     // 기본 관리자 계정은 잠금 방지를 위해 비활성화/역할 강등을 차단한다.
@@ -189,6 +297,14 @@ export class AdminService {
       }
     }
     if (dto.roleId) await this.assertRoleExists(dto.roleId);
+    const before = {
+      userNm: user.userNm,
+      userNmEng: user.userNmEng,
+      teamNm: user.teamNm,
+      teamNmEng: user.teamNmEng,
+      roleId: user.roleId,
+      useYn: user.useYn,
+    };
     Object.assign(user, {
       userNm: dto.userNm ?? user.userNm,
       userNmEng: dto.userNmEng ?? user.userNmEng,
@@ -198,23 +314,56 @@ export class AdminService {
       useYn: dto.useYn ?? user.useYn,
     });
     await this.userRepo.save(user);
+    await this.audit.record({
+      entityType: 'USER',
+      entityId: userId,
+      action: 'UPDATE',
+      ctx: { actorId, source: 'ADMIN' },
+      changes: diffFields(before, user, [
+        'userNm',
+        'userNmEng',
+        'teamNm',
+        'teamNmEng',
+        'roleId',
+        'useYn',
+      ]),
+      summary: `사용자 수정: ${user.userNm} (${userId})`,
+    });
   }
 
-  async deleteUser(userId: string): Promise<void> {
+  async deleteUser(userId: string, actorId: string): Promise<void> {
     if (userId === 'admin') {
       throw new BadRequestException('기본 관리자 계정은 삭제할 수 없습니다.');
     }
     const user = await this.userRepo.findOne({ where: { userId } });
     if (!user) throw new NotFoundException('사용자를 찾을 수 없습니다.');
     await this.userRepo.delete({ userId });
+    await this.audit.record({
+      entityType: 'USER',
+      entityId: userId,
+      action: 'DELETE',
+      ctx: { actorId, source: 'ADMIN' },
+      summary: `사용자 삭제: ${user.userNm} (${userId})`,
+    });
   }
 
-  async resetPassword(userId: string, password: string): Promise<void> {
+  async resetPassword(
+    userId: string,
+    password: string,
+    actorId: string,
+  ): Promise<void> {
     const user = await this.userRepo.findOne({ where: { userId } });
     if (!user) throw new NotFoundException('사용자를 찾을 수 없습니다.');
     user.passwordHash = bcrypt.hashSync(password, 10);
     user.authSource = 'LOCAL';
     await this.userRepo.save(user);
+    await this.audit.record({
+      entityType: 'USER',
+      entityId: userId,
+      action: 'PASSWORD_RESET',
+      ctx: { actorId, source: 'ADMIN' },
+      summary: `비밀번호 재설정: ${user.userNm} (${userId})`,
+    });
   }
 
   private async assertRoleExists(roleId: string): Promise<void> {

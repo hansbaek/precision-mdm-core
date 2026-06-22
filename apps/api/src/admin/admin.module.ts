@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { AuditModule } from '../audit/audit.module';
 import { RoleEntity } from '../auth/entities/role.entity';
 import { UserEntity } from '../auth/entities/user.entity';
 import { MenuEntity } from '../permissions/entities/menu.entity';
@@ -15,6 +16,7 @@ import { AdminService } from './admin.service';
       MenuEntity,
       RoleMenuPermEntity,
     ]),
+    AuditModule,
   ],
   controllers: [AdminController],
   providers: [AdminService],

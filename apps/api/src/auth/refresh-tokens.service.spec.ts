@@ -121,12 +121,23 @@ describe('RefreshTokensService', () => {
   });
 
   describe('revoke', () => {
-    it('제출된 tokenId 를 폐기한다', async () => {
-      await service.revoke('tid-9.somesecret');
+    it('제출된 tokenId 를 폐기하고 사용자 ID 를 반환한다', async () => {
+      repo.findOne.mockResolvedValue(
+        await row({ secret: 'x'.repeat(64), tokenId: 'tid-9', userId: 'u9' }),
+      );
+      const userId = await service.revoke('tid-9.somesecret');
+      expect(userId).toBe('u9');
       expect(repo.update).toHaveBeenCalledWith(
         { tokenId: 'tid-9' },
         { revokedYn: 'Y' },
       );
+    });
+
+    it('토큰이 없으면 null 반환, 폐기하지 않는다', async () => {
+      repo.findOne.mockResolvedValue(null);
+      const userId = await service.revoke('missing.secret');
+      expect(userId).toBeNull();
+      expect(repo.update).not.toHaveBeenCalled();
     });
   });
 });
