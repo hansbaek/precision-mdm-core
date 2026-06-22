@@ -240,7 +240,7 @@ function TestBlock({ test }: { test: MatchedTest }) {
           {test.testItemName}
           {test.testMethod && <span className="text-secondary font-medium"> / {test.testMethod}</span>}
         </div>
-        <span className="font-mono text-2xs text-secondary shrink-0">
+        <span className="font-mono text-sm text-secondary shrink-0">
           {test.expandedCondition || test.testCondition || ''}
         </span>
       </div>
