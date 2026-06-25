@@ -55,6 +55,8 @@ pnpm migration:run      # 2) 적용
   `TMDM_ROLE_MENU_PERM`, `TMDM_NOTIFICATION`, `TMDM_CHANGE_REQUEST`,
   `TMDM_REFRESH_TOKEN`, `DW_STD_CODE`, `TEMPLATE_STD_TEST_ITEM`,
   시퀀스 `SEQ_TEMPLATE_STD_TEST_ITEM`.
+  - `DW_STD_CODE`는 계층형 표준코드로, 관리자 화면에서 CRUD/이동한다 →
+    [`std-codes/README.md`](../std-codes/README.md).
 - **외부 관리(마이그레이션 금지 — 운영에 이미 존재)**: `DRW_PARAM_INFO`,
   `DW_HNT_CLASSIFICATION`, `DW_SPEC_PLM_TIRE`, `PTBSPEC`, `PTBSPECITEM`,
   `T_IF_GC_MAND_TEST_INFO_4_IPLM`, `V_MCODE_INFO_4_HINT`,

@@ -31,11 +31,14 @@ const MENUS = [
   ['test-master.analytics', 'test-master', 'TAB', '분석', 'app.tabs.analytics', 3],
   ['test-master.reports', 'test-master', 'TAB', '보고서', 'app.tabs.reports', 4],
   ['testing-protocols', null, 'MODULE', '시험 분류 마스터', 'app.nav.classificationMaster', 2],
-  ['material-specs', null, 'MODULE', '재료 사양', 'app.nav.materialSpecs', 3],
   ['vehicle-config', null, 'MODULE', '차량 구성', 'app.nav.vehicleConfig', 4],
   ['data-audit', null, 'MODULE', '데이터 감사', 'app.nav.dataAudit', 5],
   ['admin', null, 'MODULE', '권한 관리', 'app.nav.admin', 99],
 ];
+
+// 더 이상 사용하지 않는 메뉴. MERGE 는 삭제를 못 하므로 비활성화 + 권한 정리한다.
+// (표준코드 관리는 admin 모듈 하위 탭으로, admin 권한을 재사용하므로 별도 메뉴 없음)
+const OBSOLETE_MENU_IDS = ['material-specs'];
 
 // [ROLE_ID, ROLE_NM, IS_SYSTEM_YN, SORT_ORDER]
 const ROLES = [
@@ -154,6 +157,18 @@ const yn = (b) => (b ? 'Y' : 'N');
       );
     }
     console.log(`TMDM_MENU 시드: ${MENUS.length}건 MERGE`);
+
+    // 폐기 메뉴 정리: 권한 행 삭제 후 메뉴 비활성화(USE_YN='N').
+    for (const id of OBSOLETE_MENU_IDS) {
+      await conn.execute('DELETE FROM TMDM_ROLE_MENU_PERM WHERE MENU_ID = :id', {
+        id,
+      });
+      const r = await conn.execute(
+        `UPDATE TMDM_MENU SET USE_YN = 'N' WHERE MENU_ID = :id`,
+        { id },
+      );
+      if (r.rowsAffected) console.log(`TMDM_MENU 폐기: ${id} 비활성화`);
+    }
 
     for (const [id, nm, sys, sort] of ROLES) {
       await conn.execute(

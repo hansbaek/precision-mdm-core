@@ -104,12 +104,62 @@ export interface FilterOptions {
 
 export interface StdCode {
   codeGrpId: string;
+  codeGrpNm: string | null;
+  codeLvl: number;
+  parentCd: string | null;
   codeCd: string;
-  codeNm: string;
-  codeDesc: string;
-  sortOrder: number;
-  useYn: string;
+  codeNm: string | null;
+  codeDesc: string | null;
+  sortOrder: number | null;
+  useYn: string | null;
+  attr1Val: string | null;
+  attr1Nm: string | null;
+  attr1Desc: string | null;
+  attr2Val: string | null;
+  attr2Nm: string | null;
+  attr2Desc: string | null;
+  attr3Val: string | null;
+  attr3Nm: string | null;
+  attr3Desc: string | null;
+  regDtm?: string | null;
+  updDtm?: string | null;
 }
+
+/** 코드 그룹 요약(관리 화면 좌측 목록). */
+export interface StdCodeGroup {
+  codeGrpId: string;
+  codeGrpNm: string | null;
+  codeCount: number;
+}
+
+/** 트리 노드 = 코드 한 건 + 자식들. */
+export type StdCodeNode = StdCode & { children: StdCodeNode[] };
+
+/** 표준코드 생성 페이로드. */
+export interface StdCodeCreate {
+  codeGrpId: string;
+  codeGrpNm?: string;
+  parentCd?: string;
+  codeCd: string;
+  codeNm?: string;
+  codeDesc?: string;
+  sortOrder?: number;
+  useYn?: string;
+  attr1Val?: string;
+  attr1Nm?: string;
+  attr1Desc?: string;
+  attr2Val?: string;
+  attr2Nm?: string;
+  attr2Desc?: string;
+  attr3Val?: string;
+  attr3Nm?: string;
+  attr3Desc?: string;
+}
+
+/** 표준코드 수정 페이로드(PK·계층 불변). */
+export type StdCodeUpdate = Partial<
+  Omit<StdCodeCreate, 'codeGrpId' | 'parentCd' | 'codeCd'>
+>;
 
 export const ALL_MARKETS = [
   'F1', 'F2', 'F3',

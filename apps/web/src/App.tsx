@@ -28,6 +28,7 @@ import DashboardPage from './pages/dashboard-page';
 import ReportsPage from './pages/reports-page';
 import TestMatchPage from './pages/test-match-page';
 import PermissionMatrixPage from './pages/admin/permission-matrix';
+import StdCodesAdminPage from './pages/admin/std-codes';
 import UsersAdminPage from './pages/admin/users';
 import type { LegalKind } from './content/legal';
 import type { FilterOptions, StdTestItem } from './types';
@@ -50,6 +51,7 @@ const MODULE_TABS: Record<string, { id: string; labelKey: string }[]> = {
   admin: [
     { id: 'permissions', labelKey: 'app.tabs.permissions' },
     { id: 'users', labelKey: 'app.tabs.users' },
+    { id: 'std-codes', labelKey: 'app.tabs.stdCodes' },
   ],
 };
 
@@ -63,7 +65,6 @@ const PERMISSION_BACKED_MODULES = new Set(['test-master']);
 const ALL_MODULE_IDS = [
   'test-master',
   'testing-protocols',
-  'material-specs',
   'vehicle-config',
   'data-audit',
   'admin',
@@ -71,7 +72,6 @@ const ALL_MODULE_IDS = [
 
 /** 준비중 모듈명 → i18n 키. */
 const MODULE_NAME_KEY: Record<string, string> = {
-  'material-specs': 'app.nav.materialSpecs',
   'vehicle-config': 'app.nav.vehicleConfig',
   'data-audit': 'app.nav.dataAudit',
 };
@@ -293,6 +293,7 @@ export default function App() {
     if (activeModule === 'data-audit') return <AuditLogPage />;
     if (activeModule === 'admin') {
       if (activeTab === 'users') return <UsersAdminPage />;
+      if (activeTab === 'std-codes') return <StdCodesAdminPage />;
       return <PermissionMatrixPage />;
     }
     return (

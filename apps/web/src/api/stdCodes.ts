@@ -1,5 +1,11 @@
 import { axiosInstance } from './index';
-import type { StdCode } from '@/types';
+import type {
+  StdCode,
+  StdCodeCreate,
+  StdCodeGroup,
+  StdCodeNode,
+  StdCodeUpdate,
+} from '@/types';
 
 /**
  * 표준코드는 세션 내내 사실상 불변인 참조 데이터다.
@@ -43,4 +49,68 @@ export const invalidateStdCodes = (grpId?: string): void => {
   for (const key of cache.keys()) {
     if (key.startsWith(`${grpId}|`)) cache.delete(key);
   }
+};
+
+// ---------- 관리(표준코드 관리) — admin 권한 ----------
+
+/** 코드 그룹 목록(좌측 패널). */
+export const getStdCodeGroups = (): Promise<StdCodeGroup[]> =>
+  axiosInstance.get('/std-codes/groups').then((res) => res.data);
+
+/** 선택 그룹의 코드 트리(모든 레벨·USE_YN 무관). */
+export const getStdCodeTree = (grpId: string): Promise<StdCodeNode[]> =>
+  axiosInstance
+    .get('/std-codes/tree', { params: { grpId } })
+    .then((res) => res.data);
+
+/** 표준코드 생성. 성공 후 드롭다운 캐시를 무효화한다. */
+export const createStdCode = async (
+  payload: StdCodeCreate,
+): Promise<StdCode> => {
+  const res = await axiosInstance.post('/std-codes', payload);
+  invalidateStdCodes(payload.codeGrpId);
+  return res.data;
+};
+
+/** 표준코드 수정(PK·계층 불변). */
+export const updateStdCode = async (
+  grpId: string,
+  lvl: number,
+  cd: string,
+  payload: StdCodeUpdate,
+): Promise<StdCode> => {
+  const res = await axiosInstance.patch(
+    `/std-codes/${encodeURIComponent(grpId)}/${lvl}/${encodeURIComponent(cd)}`,
+    payload,
+  );
+  invalidateStdCodes(grpId);
+  return res.data;
+};
+
+/**
+ * 표준코드 이동/정렬(트리 드래그&드롭). newParentCd 생략=루트, beforeCd 생략=맨 뒤.
+ */
+export const moveStdCode = async (
+  grpId: string,
+  lvl: number,
+  cd: string,
+  payload: { newParentCd?: string; beforeCd?: string },
+): Promise<void> => {
+  await axiosInstance.patch(
+    `/std-codes/${encodeURIComponent(grpId)}/${lvl}/${encodeURIComponent(cd)}/move`,
+    payload,
+  );
+  invalidateStdCodes(grpId);
+};
+
+/** 표준코드 삭제(USE_YN='N'). */
+export const deleteStdCode = async (
+  grpId: string,
+  lvl: number,
+  cd: string,
+): Promise<void> => {
+  await axiosInstance.delete(
+    `/std-codes/${encodeURIComponent(grpId)}/${lvl}/${encodeURIComponent(cd)}`,
+  );
+  invalidateStdCodes(grpId);
 };

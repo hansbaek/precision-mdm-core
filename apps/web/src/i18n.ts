@@ -217,10 +217,10 @@ i18n
               reports: "Reports",
               permissions: "Permissions",
               users: "Users",
+              stdCodes: "Standard Codes",
             },
             nav: {
               testMaster: "Test Item Master",
-              materialSpecs: "Material Specs",
               vehicleConfig: "Vehicle Config",
               classificationMaster: "Classification Master",
               dataAudit: "Data Audit",
@@ -564,10 +564,10 @@ i18n
               reports: "보고서",
               permissions: "권한 설정",
               users: "사용자 관리",
+              stdCodes: "표준코드 관리",
             },
             nav: {
               testMaster: "시험 항목 기준 마스터",
-              materialSpecs: "재료 스펙",
               vehicleConfig: "차량 구성",
               classificationMaster: "시험 분류 마스터",
               dataAudit: "데이터 감사",

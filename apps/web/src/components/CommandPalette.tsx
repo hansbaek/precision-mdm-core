@@ -8,7 +8,6 @@ import {
   BarChart3,
   Compass,
   Database,
-  FileSpreadsheet,
   FileText,
   FlaskConical,
   LayoutDashboard,
@@ -51,7 +50,6 @@ const TABS = [
 const MODULES = [
   { id: 'test-master', labelKey: 'app.nav.testMaster', icon: Database },
   { id: 'testing-protocols', labelKey: 'app.nav.classificationMaster', icon: Compass },
-  { id: 'material-specs', labelKey: 'app.nav.materialSpecs', icon: FileSpreadsheet },
   { id: 'vehicle-config', labelKey: 'app.nav.vehicleConfig', icon: Tractor },
   { id: 'data-audit', labelKey: 'app.nav.dataAudit', icon: ShieldCheck },
 ];
