@@ -1,54 +1,42 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { AlertCircle, Layers, Search } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import {
-  getClassificationList,
-  getClassificationModes,
-  type ClassificationRow,
-} from '@/api/test-classification';
+  useClassificationList,
+  useClassificationModes,
+} from '@/hooks/use-classification';
 
 const PAGE_SIZE = 50;
 
 export default function ClassificationMaster() {
   const { t } = useTranslation();
-  const [modes, setModes] = useState<string[]>([]);
+  const modes = useClassificationModes();
   const [mode, setMode] = useState('Indoor');
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
   const [group, setGroup] = useState('');
   const [item, setItem] = useState('');
-  const [rows, setRows] = useState<ClassificationRow[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
 
-  useEffect(() => {
-    getClassificationModes()
-      .then(setModes)
-      .catch(() => setModes(['Indoor', 'Material', 'Outdoor']));
-  }, []);
+  const { rows, loading, error } = useClassificationList(mode, search);
 
-  useEffect(() => {
-    let ignore = false;
-    setLoading(true);
-    setError(null);
-    getClassificationList({ mode, search })
-      .then((data) => {
-        if (ignore) return;
-        setRows(data);
-        setGroup('');
-        setItem('');
-        setPage(1);
-      })
-      .catch(() => !ignore && setError('분류 마스터를 불러오지 못했습니다.'))
-      .finally(() => !ignore && setLoading(false));
-    return () => {
-      ignore = true;
-    };
-  }, [mode, search]);
+  // 모드/검색어가 바뀌면 데이터셋이 달라지므로 파생 필터(그룹/항목)와 페이지를 초기화.
+  const resetDerivedFilters = () => {
+    setGroup('');
+    setItem('');
+    setPage(1);
+  };
+  const onModeChange = (m: string) => {
+    setMode(m);
+    resetDerivedFilters();
+  };
+  const applySearch = () => {
+    setSearch(searchInput.trim());
+    resetDerivedFilters();
+  };
 
   // 그룹/항목 캐스케이드 — 현재 모드 데이터셋에서 파생 (모드와 항상 일관).
   const groupOptions = useMemo(
@@ -110,7 +98,7 @@ export default function ClassificationMaster() {
           <label className="text-2xs font-bold text-secondary uppercase tracking-wider">{t('app.classification.mode')}</label>
           <select
             value={mode}
-            onChange={(e) => setMode(e.target.value)}
+            onChange={(e) => onModeChange(e.target.value)}
             className="border border-border rounded-lg px-3 py-2 text-xs font-mono bg-card text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-ring/30"
           >
             <option value="ALL">{t('app.classification.allMode')}</option>
@@ -158,14 +146,14 @@ export default function ClassificationMaster() {
             type="text"
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && setSearch(searchInput.trim())}
+            onKeyDown={(e) => e.key === 'Enter' && applySearch()}
             placeholder={t('app.classification.searchPlaceholder')}
             className="w-full border border-border rounded-lg pl-9 pr-3 py-2 text-xs focus:border-primary focus:ring-2 focus:ring-ring/30 outline-none text-foreground bg-card"
           />
         </div>
         <Button
           size="sm"
-          onClick={() => setSearch(searchInput.trim())}
+          onClick={applySearch}
           className="text-xs font-bold bg-accent hover:bg-accent-hover text-white"
         >
           <Search className="h-3.5 w-3.5" />

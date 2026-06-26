@@ -71,7 +71,6 @@ function Login() {
       if (e instanceof AxiosError) {
         toast.error(e.response?.data.error);
       } else {
-        console.log(e);
         toast.error(t(`error.default`));
       }
     } finally {

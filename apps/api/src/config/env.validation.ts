@@ -7,6 +7,7 @@ import {
   IsString,
   Max,
   Min,
+  MinLength,
   validateSync,
 } from 'class-validator';
 
@@ -87,7 +88,9 @@ class EnvironmentVariables {
   @IsOptional()
   DB_LOGGING?: boolean;
 
+  // 약한 시크릿으로 JWT 가 서명되어 위·변조 위험이 생기는 것을 막는다(최소 32자).
   @IsString()
+  @MinLength(32)
   JWT_SECRET!: string;
 
   /** @deprecated JWT_ACCESS_EXPIRES_IN 사용. 호환을 위해 유지. */

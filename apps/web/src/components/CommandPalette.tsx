@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   BarChart3,
   Compass,
@@ -66,21 +66,26 @@ export default function CommandPalette({
   const { t } = useTranslation();
   const [query, setQuery] = useState('');
 
+  // 팔레트를 닫을 때 검색어를 비워 다음에 열 때 깨끗한 상태로 보이게 한다.
+  // (effect 가 아닌 닫기 이벤트 시점에 초기화 — 불필요한 렌더 캐스케이드 회피.)
+  const handleOpenChange = useCallback(
+    (next: boolean) => {
+      if (!next) setQuery('');
+      onOpenChange(next);
+    },
+    [onOpenChange],
+  );
+
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'k' && (e.metaKey || e.ctrlKey)) {
         e.preventDefault();
-        onOpenChange(!open);
+        handleOpenChange(!open);
       }
     };
     document.addEventListener('keydown', onKeyDown);
     return () => document.removeEventListener('keydown', onKeyDown);
-  }, [open, onOpenChange]);
-
-  // 팔레트를 닫으면 다음에 열 때 깨끗한 상태로 보이도록 검색어를 비운다.
-  useEffect(() => {
-    if (!open) setQuery('');
-  }, [open]);
+  }, [open, handleOpenChange]);
 
   // cmdk는 "렌더된" 항목만 필터링하므로, 항목 그룹은 전체 목록을 직접 검색한 뒤
   // 상위 결과만 렌더링한다. 이렇게 해야 항목 수가 크게 늘어도 검색이 전수를 대상으로
@@ -99,13 +104,13 @@ export default function CommandPalette({
 
   const runAndClose = (action: () => void) => {
     action();
-    onOpenChange(false);
+    handleOpenChange(false);
   };
 
   return (
     <CommandDialog
       open={open}
-      onOpenChange={onOpenChange}
+      onOpenChange={handleOpenChange}
       title="MDM Command Palette"
       description={t('app.palette.desc')}
     >
