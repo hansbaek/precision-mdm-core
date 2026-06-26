@@ -1,42 +1,18 @@
-import { useEffect, useState } from 'react';
-import { getStdCodes } from '@/api/stdCodes';
-import type { StdCode } from '@/types';
+import { useQuery } from '@tanstack/react-query';
+import { getStdCodes, stdCodesKey } from '@/api/stdCodes';
 
 export function useStdCodes(grpId: string, level?: number) {
-  const [data, setData] = useState<StdCode[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
+  const query = useQuery({
+    queryKey: stdCodesKey(grpId, level),
+    queryFn: () => getStdCodes(grpId, level),
+    // 표준코드는 사실상 불변 참조 데이터 — 명시적 무효화 전까지 재조회하지 않는다.
+    // (관리자 편집 시 invalidateStdCodes 가 해당 그룹을 무효화)
+    staleTime: Infinity,
+  });
 
-  useEffect(() => {
-    let ignore = false;
-
-    const loadStdCodes = async () => {
-      setLoading(true);
-      setError(null);
-
-      try {
-        const result = await getStdCodes(grpId, level);
-        if (!ignore) {
-          setData(Array.isArray(result) ? result : []);
-        }
-      } catch (err) {
-        if (!ignore) {
-          setError(err instanceof Error ? err : new Error('Failed to load standard codes'));
-          setData([]);
-        }
-      } finally {
-        if (!ignore) {
-          setLoading(false);
-        }
-      }
-    };
-
-    void loadStdCodes();
-
-    return () => {
-      ignore = true;
-    };
-  }, [grpId, level]);
-
-  return { data, loading, error };
+  return {
+    data: query.data ?? [],
+    loading: query.isLoading,
+    error: query.error,
+  };
 }
