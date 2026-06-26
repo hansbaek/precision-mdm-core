@@ -11,6 +11,7 @@
     "web:dev": "turbo dev --filter=@hkrndmdm/web",
     "web:build": "turbo build --filter=@hkrndmdm/web",
     "web:lint": "turbo lint --filter=@hkrndmdm/web",
+    "web:test": "turbo test --filter=@hkrndmdm/web",
     "web:preview": "turbo preview --filter=@hkrndmdm/web",
     "api:dev": "turbo start:dev --filter=@hkrndmdm/api",
     "api:build": "turbo build --filter=@hkrndmdm/api",

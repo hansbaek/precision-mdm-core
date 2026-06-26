@@ -62,7 +62,10 @@ TypeScript를 기본으로 사용합니다. `apps/web`에서는 React 함수형 
 ## 테스트 가이드라인 (Testing Guidelines)
 
 API 워크스페이스에는 NestJS 기본 스캐폴딩으로 생성된 Jest가 포함되어 있습니다. API 테스트 시에는 `pnpm api:test`를 실행하십시오.
-프론트엔드 테스트를 추가하는 경우, 테스트 대상 파일 옆에 배치하는 코로케이션(Colocation) 패턴을 따르고 파일명을 `*.test.ts` 또는 `*.test.tsx`로 명명하십시오. 다중 워크스페이스에 걸친 공통 테스트가 도입될 경우에만 루트에 `pnpm test` 스크립트를 통합해야 합니다.
+
+프론트엔드(`apps/web`)는 Vitest + Testing Library(jsdom)가 구성되어 있습니다. 웹 테스트는 `pnpm web:test`(또는 watch 모드 `pnpm --filter @hkrndmdm/web test:watch`)로 실행합니다. 테스트는 대상 파일 옆에 배치하는 코로케이션(Colocation) 패턴을 따르고 파일명을 `*.test.ts` 또는 `*.test.tsx`로 명명하십시오. 전역 setup은 `apps/web/src/test/setup.ts`(jest-dom 매처 등록)이며, Vitest 설정은 `vite.config.ts`의 `test` 블록에 있습니다.
+
+루트 `pnpm test`는 Turborepo를 통해 두 워크스페이스(api Jest + web Vitest)의 테스트를 모두 실행합니다.
 
 ## 커밋 및 풀 리퀘스트 가이드라인 (Commit & Pull Request Guidelines)
 
