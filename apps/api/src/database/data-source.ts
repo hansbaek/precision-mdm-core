@@ -2,6 +2,7 @@ import 'reflect-metadata';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { DataSource, DataSourceOptions } from 'typeorm';
+import { baseOracleOptions } from '../config/oracle-options';
 
 /**
  * TypeORM CLI(마이그레이션) 전용 DataSource.
@@ -30,23 +31,21 @@ function loadEnv(): void {
 
 loadEnv();
 
-const host = process.env.DB_HOST;
-const port = process.env.DB_PORT ?? '1521';
-const service = process.env.DB_SERVICE_NAME ?? process.env.DB_SID;
-const connectString =
-  process.env.DB_CONNECT_STRING ?? `${host}:${port}/${service}`;
-
 const options: DataSourceOptions = {
-  type: 'oracle',
-  username: process.env.DB_USERNAME,
-  password: process.env.DB_PASSWORD,
-  connectString,
-  synchronize: false,
-  logging: process.env.DB_LOGGING === 'true',
+  // 접속·불변 정책은 런타임(database.config.ts)과 동일한 공통 빌더에서.
+  ...baseOracleOptions({
+    username: process.env.DB_USERNAME,
+    password: process.env.DB_PASSWORD,
+    connectString: process.env.DB_CONNECT_STRING,
+    host: process.env.DB_HOST,
+    port: process.env.DB_PORT ? Number(process.env.DB_PORT) : undefined,
+    serviceName: process.env.DB_SERVICE_NAME,
+    sid: process.env.DB_SID,
+    logging: process.env.DB_LOGGING === 'true',
+  }),
+  // CLI 는 Nest autoLoadEntities 가 없으므로 엔티티를 glob 으로 직접 수집한다.
   entities: [join(__dirname, '..', '**', '*.entity.{ts,js}')],
   migrations: [join(__dirname, 'migrations', '*.{ts,js}')],
-  // 추적 테이블도 앱 prefix 를 따른다.
-  migrationsTableName: 'TMDM_MIGRATIONS',
 };
 
 // TypeORM CLI 는 파일에 DataSource 인스턴스 export 가 정확히 하나여야 한다.
