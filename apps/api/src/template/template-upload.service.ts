@@ -14,6 +14,7 @@ import {
   PK_COL,
   TABLE_NAME,
 } from './template.constants';
+import { TemplateCacheService } from './template-cache.service';
 import {
   UploadApplyResponse,
   UploadChange,
@@ -69,6 +70,7 @@ export class TemplateUploadService {
   constructor(
     @InjectDataSource() private readonly dataSource: DataSource,
     private readonly audit: AuditService,
+    private readonly cache: TemplateCacheService,
   ) {}
 
   async preview(buffer: Buffer): Promise<UploadPreviewResponse> {
@@ -117,6 +119,8 @@ export class TemplateUploadService {
       await this.applyDeletes(runner, diff);
 
       await runner.commitTransaction();
+      // 템플릿이 변경됐으니 매칭 캐시를 비운다(다음 조회 시 재적재).
+      this.cache.invalidate();
 
       // 커밋 후 감사 기록(베스트 에포트). 대량 변경은 요약 + 영향 ID 로 남긴다.
       await this.recordBulkAudit(actorId, diff);

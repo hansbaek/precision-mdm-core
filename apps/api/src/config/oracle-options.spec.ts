@@ -26,7 +26,12 @@ describe('resolveOracleConnection', () => {
       serviceName: 'xepdb1',
       sid: 'XE',
     });
-    expect(c).toEqual({ ...creds, host: 'db', port: 1521, serviceName: 'xepdb1' });
+    expect(c).toEqual({
+      ...creds,
+      host: 'db',
+      port: 1521,
+      serviceName: 'xepdb1',
+    });
     expect('sid' in c).toBe(false);
   });
 
@@ -42,14 +47,18 @@ describe('resolveOracleConnection', () => {
   });
 
   it('port 미지정 시 1521 로 기본 설정한다', () => {
-    const c = resolveOracleConnection({ ...creds, host: 'db', serviceName: 's' });
+    const c = resolveOracleConnection({
+      ...creds,
+      host: 'db',
+      serviceName: 's',
+    });
     expect(c).toMatchObject({ port: 1521 });
   });
 
   it('connectString 도 host 도 없으면 예외를 던진다', () => {
-    expect(() => resolveOracleConnection({ ...creds, serviceName: 's' })).toThrow(
-      /DB_HOST/,
-    );
+    expect(() =>
+      resolveOracleConnection({ ...creds, serviceName: 's' }),
+    ).toThrow(/DB_HOST/);
   });
 });
 

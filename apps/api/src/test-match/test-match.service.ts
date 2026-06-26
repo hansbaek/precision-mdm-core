@@ -2,7 +2,8 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
 import * as ExcelJS from 'exceljs';
-import { MARKET_COLS, TABLE_NAME } from '../template/template.constants';
+import { MARKET_COLS } from '../template/template.constants';
+import { TemplateCacheService } from '../template/template-cache.service';
 import {
   CODE_TO_GROUP,
   DEFERRED_FILTER_COLS,
@@ -113,7 +114,10 @@ WHERE m.ACTIVE_YN='Y' AND m.MCODE=:mc`;
 
 @Injectable()
 export class TestMatchService {
-  constructor(@InjectDataSource() private readonly dataSource: DataSource) {}
+  constructor(
+    @InjectDataSource() private readonly dataSource: DataSource,
+    private readonly templateCache: TemplateCacheService,
+  ) {}
 
   // ---- 값 헬퍼 ----
   private str(v: unknown): string {
@@ -374,9 +378,8 @@ export class TestMatchService {
     const tire = await this.resolveTire(mcode);
     if (!tire) throw new NotFoundException(await this.explainMissing(mcode));
 
-    const rows: RawRow[] = await this.dataSource.query(
-      `SELECT * FROM ${TABLE_NAME} ORDER BY TMPLT_ID`,
-    );
+    // 템플릿 전체 행은 거의 변하지 않으므로 캐시에서 가져온다(쓰기 시 무효화됨).
+    const rows: RawRow[] = await this.templateCache.getRows();
 
     // 타이어측 플래그 ON 여부
     const tireSsNorm = (tire.ss ?? '').replace(/[()]/g, '') || null;

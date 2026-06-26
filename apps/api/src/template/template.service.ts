@@ -11,6 +11,7 @@ import {
 import { UpdateStdTestItemDto } from './dto/update-std-test-item.dto';
 import { CreateStdTestItemDto } from './dto/create-std-test-item.dto';
 import { MARKET_COLS, TABLE_NAME } from './template.constants';
+import { TemplateCacheService } from './template-cache.service';
 
 const PK_SEQUENCE = 'SEQ_TEMPLATE_STD_TEST_ITEM';
 
@@ -39,6 +40,7 @@ export class TemplateService {
   constructor(
     @InjectDataSource() private readonly dataSource: DataSource,
     private readonly audit: AuditService,
+    private readonly cache: TemplateCacheService,
   ) {}
 
   private cell(r: RawRow, key: string): string {
@@ -246,6 +248,7 @@ export class TemplateService {
         `UPDATE ${TABLE_NAME} SET ${setClauses.join(', ')} WHERE TMPLT_ID = :${idx}`,
         params,
       );
+      this.cache.invalidate();
     }
 
     const updated = await this.findOneStdTestItem(id);
@@ -334,6 +337,7 @@ export class TemplateService {
       `INSERT INTO ${TABLE_NAME} (${cols.join(', ')}) VALUES (${placeholders})`,
       values,
     );
+    this.cache.invalidate();
 
     const created = await this.findOneStdTestItem(newId);
     await this.audit.record({
@@ -353,6 +357,7 @@ export class TemplateService {
       `DELETE FROM ${TABLE_NAME} WHERE TMPLT_ID = :1`,
       [id],
     );
+    this.cache.invalidate();
     await this.audit.record({
       entityType: AUDIT_ENTITY,
       entityId: id,
