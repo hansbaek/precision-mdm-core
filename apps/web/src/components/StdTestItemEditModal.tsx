@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react';
+import { useQuery, keepPreviousData } from '@tanstack/react-query';
+import { useDebounceValue } from 'usehooks-ts';
 import { AlertTriangle, Check, Lock, Plus, Save, Wand2 } from 'lucide-react';
 
 import FlagToggle from '@/components/FlagToggle';
@@ -27,8 +29,6 @@ import {
   getRegulationCodes,
   suggestCertiType,
   suggestEndurSvrty,
-  type CertiTypeSuggestResult,
-  type SvrtySuggestResult,
 } from '../api/endur-svrty';
 import { useStdCodes } from '../hooks/use-std-codes';
 import type { StdTestItem } from '../types';
@@ -291,24 +291,13 @@ export default function StdTestItemEditModal({
   // Inline confirmation for the just-created record (create-and-continue flow).
   const [lastCreatedId, setLastCreatedId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
-  // Regulation codes back the CERTI_TYPE multi-combo (DW_REGULATION_MARKET_MAP)
-  const [regulationOptions, setRegulationOptions] = useState<string[]>([]);
-
-  useEffect(() => {
-    let ignore = false;
-    const load = async () => {
-      try {
-        const data = await getRegulationCodes();
-        if (!ignore) setRegulationOptions(data);
-      } catch {
-        /* 콤보 옵션만 비워둠 — 폼은 계속 사용 가능 */
-      }
-    };
-    void load();
-    return () => {
-      ignore = true;
-    };
-  }, []);
+  // Regulation codes back the CERTI_TYPE multi-combo (DW_REGULATION_MARKET_MAP).
+  // 참조 데이터라 길게 캐싱한다. 실패해도 콤보만 비고 폼은 계속 사용 가능.
+  const { data: regulationOptions = [] } = useQuery({
+    queryKey: ['regulation-codes'],
+    queryFn: getRegulationCodes,
+    staleTime: 5 * 60_000,
+  });
 
   // DW_STD_CODE-backed option lists (fetched once; modal stays mounted in App)
   const { data: productLineCodes } = useStdCodes('PRODUCT_LINE', 2);
@@ -585,95 +574,38 @@ function TestItemDefinitionSection({
   onChange: (key: keyof FormState, value: string) => void;
   disabled: boolean;
 }) {
+  // 그룹은 화면 필터용 로컬 선택값(저장 안 함).
   const [group, setGroup] = useState('');
-  const [groups, setGroups] = useState<string[]>([]);
-  const [items, setItems] = useState<string[]>([]);
-  const [methods, setMethods] = useState<string[]>([]);
-  const [conditions, setConditions] = useState<string[]>([]);
-  const [itemsLoading, setItemsLoading] = useState(false);
-  const [methodsLoading, setMethodsLoading] = useState(false);
-  const [conditionsLoading, setConditionsLoading] = useState(false);
 
-  useEffect(() => {
-    let ignore = false;
-    const load = async () => {
-      try {
-        const data = await getTestClassificationGroups();
-        if (!ignore) setGroups(data);
-      } catch {
-        /* 콤보 목록만 비워둠 — 폼 자체는 계속 사용 가능 */
-      }
-    };
-    void load();
-    return () => {
-      ignore = true;
-    };
-  }, []);
+  // 기준 분류(DW_HNT_CLASSIFICATION)는 참조 데이터라 길게 캐싱한다.
+  const { data: groups = [] } = useQuery({
+    queryKey: ['test-classification', 'groups'],
+    queryFn: getTestClassificationGroups,
+    staleTime: 5 * 60_000,
+  });
 
-  useEffect(() => {
-    let ignore = false;
-    const load = async () => {
-      setItemsLoading(true);
-      try {
-        const data = await getTestClassificationItems(group || undefined);
-        if (!ignore) setItems(data);
-      } catch {
-        /* keep previous list */
-      } finally {
-        if (!ignore) setItemsLoading(false);
-      }
-    };
-    void load();
-    return () => {
-      ignore = true;
-    };
-  }, [group]);
+  // 그룹 변경 시 목록 churn을 막기 위해 이전 데이터를 유지하며 갱신.
+  const { data: items = [], isFetching: itemsLoading } = useQuery({
+    queryKey: ['test-classification', 'items', group],
+    queryFn: () => getTestClassificationItems(group || undefined),
+    placeholderData: keepPreviousData,
+    staleTime: 5 * 60_000,
+  });
 
-  useEffect(() => {
-    let ignore = false;
-    const load = async () => {
-      if (!form.testItemName) {
-        setMethods([]);
-        return;
-      }
-      setMethodsLoading(true);
-      try {
-        const data = await getTestClassificationMethods(form.testItemName);
-        if (!ignore) setMethods(data);
-      } catch {
-        /* keep previous list */
-      } finally {
-        if (!ignore) setMethodsLoading(false);
-      }
-    };
-    void load();
-    return () => {
-      ignore = true;
-    };
-  }, [form.testItemName]);
+  // 항목 미선택 시 비활성 → methods []. (키에 항목명이 포함돼 빈 값일 때 데이터 없음)
+  const { data: methods = [], isFetching: methodsLoading } = useQuery({
+    queryKey: ['test-classification', 'methods', form.testItemName],
+    queryFn: () => getTestClassificationMethods(form.testItemName),
+    enabled: !!form.testItemName,
+    staleTime: 5 * 60_000,
+  });
 
-  useEffect(() => {
-    let ignore = false;
-    const load = async () => {
-      if (!form.testItemName || !form.testMethod) {
-        setConditions([]);
-        return;
-      }
-      setConditionsLoading(true);
-      try {
-        const data = await getTestClassificationConditions(form.testItemName, form.testMethod);
-        if (!ignore) setConditions(data);
-      } catch {
-        /* keep previous list */
-      } finally {
-        if (!ignore) setConditionsLoading(false);
-      }
-    };
-    void load();
-    return () => {
-      ignore = true;
-    };
-  }, [form.testItemName, form.testMethod]);
+  const { data: conditions = [], isFetching: conditionsLoading } = useQuery({
+    queryKey: ['test-classification', 'conditions', form.testItemName, form.testMethod],
+    queryFn: () => getTestClassificationConditions(form.testItemName, form.testMethod),
+    enabled: !!form.testItemName && !!form.testMethod,
+    staleTime: 5 * 60_000,
+  });
 
   // Changing the representative (item/method/condition) invalidates any pattern
   // built on the old base, so CDN_PATTERN is cleared alongside.
@@ -986,67 +918,34 @@ function MarketEditSection({
   testMethod: string;
   ss: string;
 }) {
-  const [suggestion, setSuggestion] = useState<SvrtySuggestResult | null>(null);
-  const [suggestLoading, setSuggestLoading] = useState(false);
-  const [certiSuggestion, setCertiSuggestion] = useState<CertiTypeSuggestResult | null>(null);
-  const [certiLoading, setCertiLoading] = useState(false);
-
   const marketsStr = ALL_MARKETS.filter((m) => selectedMarkets.has(m)).join(',');
+  // 시장 토글은 버스트로 들어오므로 디바운스해 제안 요청을 합친다.
+  const [debouncedMarketsStr] = useDebounceValue(marketsStr, 300);
 
-  useEffect(() => {
-    let ignore = false;
-    const load = async () => {
-      if (!productLine || !marketsStr) {
-        setSuggestion(null);
-        return;
-      }
-      setSuggestLoading(true);
-      try {
-        const result = await suggestEndurSvrty({
-          productLine,
-          markets: marketsStr,
-          testMethod: testMethod || undefined,
-          ss: ss || undefined,
-        });
-        if (!ignore) setSuggestion(result);
-      } catch {
-        if (!ignore) setSuggestion(null);
-      } finally {
-        if (!ignore) setSuggestLoading(false);
-      }
-    };
-    // Debounce: market toggles come in bursts
-    const timer = setTimeout(() => void load(), 300);
-    return () => {
-      ignore = true;
-      clearTimeout(timer);
-    };
-  }, [productLine, marketsStr, testMethod, ss]);
+  // ENDUR_SVRTY 제안 — 시장·방법·SS 기반. 입력이 키에 포함돼 값이 비면
+  // 새 키로 분리되고 비활성화되어 제안이 자동으로 null이 된다.
+  const svrtyQuery = useQuery({
+    queryKey: ['suggest-endur-svrty', productLine, debouncedMarketsStr, testMethod, ss],
+    queryFn: () =>
+      suggestEndurSvrty({
+        productLine,
+        markets: debouncedMarketsStr,
+        testMethod: testMethod || undefined,
+        ss: ss || undefined,
+      }),
+    enabled: !!productLine && !!debouncedMarketsStr,
+  });
+  const suggestion = svrtyQuery.data ?? null;
+  const suggestLoading = svrtyQuery.isFetching;
 
   // CERTI_TYPE 제안 — 선택 시장에 매핑된 법규 코드
-  useEffect(() => {
-    let ignore = false;
-    const load = async () => {
-      if (!marketsStr) {
-        setCertiSuggestion(null);
-        return;
-      }
-      setCertiLoading(true);
-      try {
-        const result = await suggestCertiType(marketsStr);
-        if (!ignore) setCertiSuggestion(result);
-      } catch {
-        if (!ignore) setCertiSuggestion(null);
-      } finally {
-        if (!ignore) setCertiLoading(false);
-      }
-    };
-    const timer = setTimeout(() => void load(), 300);
-    return () => {
-      ignore = true;
-      clearTimeout(timer);
-    };
-  }, [marketsStr]);
+  const certiQuery = useQuery({
+    queryKey: ['suggest-certi-type', debouncedMarketsStr],
+    queryFn: () => suggestCertiType(debouncedMarketsStr),
+    enabled: !!debouncedMarketsStr,
+  });
+  const certiSuggestion = certiQuery.data ?? null;
+  const certiLoading = certiQuery.isFetching;
 
   const certiSet = new Set(
     certiType
