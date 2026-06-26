@@ -52,6 +52,7 @@ DB_POOL_SIZE=10
 DB_LOGGING=false
 
 # Auth (JWT) — see "Auth & Access Control" below
+# JWT_SECRET must be at least 32 characters (validated at boot).
 JWT_SECRET=change_me_to_a_long_random_secret
 JWT_EXPIRES_IN=8h
 AUTH_PROVIDER=local
@@ -66,6 +67,8 @@ Supported Oracle connection styles:
 - `DB_CONNECT_STRING`
 
 The current default configuration uses node-oracledb Thin mode, so an Oracle Client installation is not required for the normal Oracle 19c connection path.
+
+Runtime (`config/database.config.ts`) and the migration CLI (`database/data-source.ts`) share a single connection builder in `config/oracle-options.ts` (`resolveOracleConnection` / `baseOracleOptions`), so both resolve `DB_SERVICE_NAME` vs `DB_SID` identically. Keep new connection logic in that builder rather than duplicating it.
 
 ## Database Safety
 
@@ -85,7 +88,7 @@ Authentication is JWT-based. Access is controlled per **menu × action** via rol
 
 | Variable | Purpose |
 | --- | --- |
-| `JWT_SECRET` | JWT signing secret — **use a long random value in production** |
+| `JWT_SECRET` | JWT signing secret — **min 32 characters, validated at boot**; use a long random value in production |
 | `JWT_EXPIRES_IN` | Token lifetime (default `8h`) |
 | `AUTH_PROVIDER` | Auth source: `local` (TMDM_USER + bcrypt). Abstracted for future `sso`. |
 | `ADMIN_PASSWORD` | Initial admin password — **only** used by the seed script when first creating `admin`. |

@@ -110,6 +110,16 @@ mcode(타이어) 하나에 대해 `TEMPLATE_STD_TEST_ITEM`의 각 행(표준 시
 ([`:531`](./test-match.service.ts#L531)). 즉 이 컬럼들은 현재 행을 떨어뜨리지도,
 추출 이유가 되지도 않는다.
 
+## 4.5. 템플릿 데이터 소스 / 캐시
+
+`match()`는 `TEMPLATE_STD_TEST_ITEM` 전체 행을 `TemplateCacheService`
+([`template-cache.service.ts`](../template/template-cache.service.ts))에서 가져온다.
+매 요청마다 `SELECT *`를 다시 하지 않고 인메모리에 캐시하며, 템플릿 쓰기(생성/수정/
+삭제·Excel 업로드 적용·변경요청 반영) 시 `invalidate()`로 즉시 비운다(무효화 누락
+대비 TTL 5분 안전망). 따라서 매칭 결과는 템플릿 편집 후에도 최신 상태를 유지한다.
+
+> 새 템플릿 쓰기 경로를 추가하면 반드시 `TemplateCacheService.invalidate()`를 호출할 것.
+
 ## 5. 조건 표시(CDN_PATTERN) 전개
 
 매칭과 별개로, 화면 표시용 조건 문자열은 `CDN_PATTERN`의 치환자를 타이어 값으로
