@@ -16,6 +16,11 @@
   - 모듈/탭이 URL 경로에 반영됨: `/{module}/{tab}` (예: `/test-master/reports`). 이전엔 상태 기반이라 항상 `/`였음
   - 이제 **딥링크(특정 탭 북마크)·새로고침 시 탭 유지·브라우저 뒤로/앞으로**가 동작
   - 화면 매핑은 `App.tsx`의 `screens` 레지스트리로 일원화, 라우트 정규화/권한 게이팅은 순수 함수 `resolveActiveRoute`로 추출(+테스트). 상세: [web/README.md](./README.md) _Navigation_ 절
+- **안정성·번들 정비**
+  - **ErrorBoundary 도입** — 한 화면의 렌더 에러가 앱 전체 화이트스크린이 되던 문제 해결. 라우트 콘텐츠를 경계로 감싸 격리하고(탭 이동 시 자동 리셋, "다시 시도" 제공), main 셸에도 최후 안전망 배치. (`components/ErrorBoundary.tsx`)
+  - **라우트 단위 코드 스플리팅** — 모든 화면을 `React.lazy`+`<Suspense>`로 분할. 단일 번들 **945KB→672KB(gzip 288→213KB)**, 화면은 진입 시 로드. 초기 로드 단축
+  - **Dead code 제거** — 라우터에서 도달 불가한 템플릿 잔재(`logged-in-home`/`layout-sample-pages`/`home`/`layout-with-sidebar`/`profile-icon`/`navbar/app-sidebar`) 삭제. 유일하던 `no-explicit-any` 억제도 함께 제거
+  - 테스트: ErrorBoundary 3종 추가 (web 25→28)
 - **백엔드(api) 개선** (운영/성능)
   - `JWT_SECRET` 최소 길이(32자) 부팅 검증 추가 — 약한 시크릿 차단
   - Oracle 접속 옵션을 공통 빌더로 통합(런타임·마이그레이션 CLI 일원화) — CLI가 SID를 service name처럼 취급하던 잠재 불일치 제거

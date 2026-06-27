@@ -3,16 +3,18 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useEffect, useState, type ReactNode } from 'react';
+import { lazy, Suspense, useEffect, useState, type ReactNode } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useLocation, useNavigate } from 'react-router';
 import { useTranslation } from 'react-i18next';
 
 import CommandPalette from './components/CommandPalette';
 import DashboardModals from './components/dashboard/dashboard-modals';
+import ErrorBoundary from './components/ErrorBoundary';
 import Header from './components/Header';
 import LegalModal from './components/LegalModal';
 import Sidebar from './components/Sidebar';
+import { Spinner } from './components/ui/spinner';
 import { useStdStats } from './hooks/use-std-stats';
 import { useStdItemsDashboard } from './hooks/use-std-items-dashboard';
 import { useCan } from './hooks/use-permissions-store';
@@ -22,17 +24,19 @@ import {
   resolveActiveRoute,
   visibleTabs,
 } from './lib/nav-config';
-import AnalyticsPage from './pages/analytics-page';
-import ApprovalsPage from './pages/approvals-page';
-import AuditLogPage from './pages/audit-log-page';
-import ClassificationMaster from './pages/classification-master';
-import DashboardPage from './pages/dashboard-page';
-import ReportsPage from './pages/reports-page';
-import TestMatchPage from './pages/test-match-page';
-import PermissionMatrixPage from './pages/admin/permission-matrix';
-import StdCodesAdminPage from './pages/admin/std-codes';
-import UsersAdminPage from './pages/admin/users';
 import type { LegalKind } from './content/legal';
+
+// 화면은 라우트 단위로 코드 스플리팅(초기 번들 축소). 진입 시 청크 로드.
+const AnalyticsPage = lazy(() => import('./pages/analytics-page'));
+const ApprovalsPage = lazy(() => import('./pages/approvals-page'));
+const AuditLogPage = lazy(() => import('./pages/audit-log-page'));
+const ClassificationMaster = lazy(() => import('./pages/classification-master'));
+const DashboardPage = lazy(() => import('./pages/dashboard-page'));
+const ReportsPage = lazy(() => import('./pages/reports-page'));
+const TestMatchPage = lazy(() => import('./pages/test-match-page'));
+const PermissionMatrixPage = lazy(() => import('./pages/admin/permission-matrix'));
+const StdCodesAdminPage = lazy(() => import('./pages/admin/std-codes'));
+const UsersAdminPage = lazy(() => import('./pages/admin/users'));
 
 /** 모듈(+탭)에 대한 정규 경로. 탭이 없는 모듈은 `/module`. */
 const pathOf = (module: string, tab: string) =>
@@ -159,7 +163,19 @@ export default function App() {
               transition={{ duration: 0.15, ease: 'easeOut' }}
               className="space-y-6"
             >
-              {renderContent()}
+              {/* 키 기반 리마운트 → 탭 이동 시 ErrorBoundary 자동 리셋.
+                  Suspense 는 lazy 화면 청크 로딩 중 스피너를 표시. */}
+              <ErrorBoundary>
+                <Suspense
+                  fallback={
+                    <div className="flex justify-center py-20">
+                      <Spinner className="h-6 w-6" />
+                    </div>
+                  }
+                >
+                  {renderContent()}
+                </Suspense>
+              </ErrorBoundary>
             </motion.div>
           </AnimatePresence>
         </main>

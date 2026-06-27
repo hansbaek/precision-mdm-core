@@ -26,26 +26,24 @@ src/
 ├─ api/                    # Axios 인스턴스 및 API 인터페이스 정의
 ├─ assets/                 # 정적 리소스 (이미지 등)
 ├─ components/             # 공통 재사용 컴포넌트 (Shadcn 등)
+│  ├─ ErrorBoundary.tsx    # 렌더 에러 격리(화이트스크린 방지)
+│  └─ dashboard/           # 대시보드 전용 컴포넌트 (모달 묶음 등)
 ├─ hooks/                  # 커스텀 훅 (서버 데이터는 useQuery 래핑 훅으로 제공)
 ├─ lib/                    # 기타 라이브러리 코드
-│  └─ query-client.ts      # 전역 QueryClient (TanStack Query) 설정
-├─ pages/                  # 페이지 단위 컴포넌트
-│  ├─ home/                # 일반 홈 페이지
-│  │  └─ index.tsx
-│  ├─ login/               # 로그인 페이지
-│  │  └─ index.tsx
-│  ├─ unauthorized/        # 권한 없음 페이지
-│  │  └─ index.tsx
-│  ├─ logged-in-home/      # 로그인이 된 경우를 가정한 홈 페이지
-│  │  └─ index.tsx
-│  └─ layout-sample-pages/ # 레이아웃 예시 페이지 모음
-│     ├─ with-sidebar/
-│     │  └─ index.tsx      # 상단바와 사이드바가 모두 포함된 레이아웃
-│     └─ without-sidebar/
-│        └─ index.tsx      # 상단바만 포함된 레이아웃
-├─ routers/                # 라우팅 설정 (Protected/Public Route 분리)
+│  ├─ query-client.ts      # 전역 QueryClient (TanStack Query) 설정
+│  └─ nav-config.ts        # 모듈/탭 네비 구성 + 라우트 정규화(resolveActiveRoute)
+├─ pages/                  # 화면(라우트) 단위 컴포넌트 — App.tsx 의 screens 레지스트리에 등록
+│  ├─ login.tsx            # 로그인
+│  ├─ unauthorized.tsx     # 권한 없음
+│  ├─ dashboard-page.tsx   # 시험항목 마스터(대시보드)
+│  ├─ test-match-page.tsx  # 필요시험조회
+│  ├─ analytics-page.tsx · reports-page.tsx · approvals-page.tsx
+│  ├─ classification-master.tsx · audit-log-page.tsx
+│  └─ admin/               # 권한 매트릭스 · 사용자 · 표준코드
+├─ routers/                # 최상위 인증 가드 (Protected/Public Route)
+├─ App.tsx                 # 인증 영역 레이아웃 셸 + 화면 레지스트리(URL→화면)
 ├─ i18n.ts                 # 다국어 설정
-├─ main.tsx                # 엔트리 포인트
+├─ main.tsx                # 엔트리 포인트 (BrowserRouter + 최상위 ErrorBoundary)
 └─ types.ts                # 공용 타입 정의
 ```
 
