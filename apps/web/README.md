@@ -132,8 +132,19 @@ pnpm preview
 
 ---
 
+## 🧭 Navigation (Screen Routing)
+
+인증 영역의 화면 전환은 **URL 기반**입니다. 모듈/탭이 경로에 반영되어 **딥링크·새로고침 유지·브라우저 뒤로/앞으로**가 동작합니다.
+
+- **경로 규칙**: `/{module}/{tab}` (탭이 없는 모듈은 `/{module}`). 예: `/test-master/reports`, `/admin/users`, `/testing-protocols`.
+- **셸**: [`App.tsx`](src/App.tsx)가 레이아웃 셸. `useLocation`으로 경로를 파싱하고, 사이드바/헤더/팔레트의 전환은 `useNavigate`로 URL을 바꾼다(상태 setter 아님).
+- **정규화**: [`resolveActiveRoute`](src/lib/nav-config.ts)가 URL의 (module, tab)을 권한·구성에 비춰 유효한 값으로 정규화하고, `App`의 effect가 실제 URL을 canonical 경로로 교정한다(미허용 모듈/탭, `/` 진입 등). 권한 게이팅은 `ProtectedRoute`(로그인+권한 적재)와 `resolveActiveRoute`(메뉴 view 권한)에서 이뤄진다.
+- **화면 레지스트리**: 어떤 (module/tab)에 어떤 화면을 렌더할지는 `App.tsx`의 `screens` 맵에 모여 있다. **화면 추가 = 맵 항목 + (탭이면) [`nav-config.ts`](src/lib/nav-config.ts)의 `MODULE_TABS` 항목 추가.**
+
+---
+
 ## 📝 Rules & Conventions
 
-1.  **Routing**: 신규 페이지 추가 시 `src/routers/` 내 인증 권한 여부에 따라 `ProtectedRoute` 또는 `PublicRoute`를 적절히 사용하세요.
+1.  **Routing**: 최상위 인증 게이트는 `src/routers/`의 `ProtectedRoute`/`PublicRoute`를 사용하고, 인증 영역의 새 화면은 위 _Navigation_ 절대로 `App.tsx`의 `screens` 레지스트리와 `nav-config.ts`에 등록하세요.
 2.  **State Management**: **서버 상태는 TanStack Query**(위 _Data Fetching_ 절), **클라이언트/UI 전역 상태는 Zustand**(`src/hooks/` 내 store 단위)로 분리해 관리합니다.
 3.  **Styling**: 디자인 시스템 확장을 위해 Shadcn UI 컨벤션을 준수합니다.

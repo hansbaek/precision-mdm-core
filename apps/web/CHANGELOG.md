@@ -11,6 +11,11 @@
     - `CommandPalette` — 닫힘 시 검색어 초기화를 effect→`onOpenChange` 래퍼로 변경
     - `login` 잔여 `console.log` 제거
   - **프런트엔드 테스트 도입** — Vitest + Testing Library(jsdom) 구성. 권한 게이팅(`useCan`)·`cn` 유틸 등 11개 테스트. `pnpm web:test`로 실행 (루트 `pnpm test`가 api Jest + web Vitest 모두 실행). 상세: [AGENTS.md](/AGENTS.md) 테스트 가이드
+  - **App.tsx 대시보드 관심사 분리** (428→229줄) — STD 시험항목 테이블/모달 상태·핸들러를 `use-std-items-dashboard` 훅으로, 모달 3종을 `DashboardModals`로, 네비 상수를 `nav-config`로 추출. App 은 셸만 담당. (동작 변화 없음)
+- **화면 전환을 URL 라우팅으로 전환** (사용자 영향 있음 — 개선)
+  - 모듈/탭이 URL 경로에 반영됨: `/{module}/{tab}` (예: `/test-master/reports`). 이전엔 상태 기반이라 항상 `/`였음
+  - 이제 **딥링크(특정 탭 북마크)·새로고침 시 탭 유지·브라우저 뒤로/앞으로**가 동작
+  - 화면 매핑은 `App.tsx`의 `screens` 레지스트리로 일원화, 라우트 정규화/권한 게이팅은 순수 함수 `resolveActiveRoute`로 추출(+테스트). 상세: [web/README.md](./README.md) _Navigation_ 절
 - **백엔드(api) 개선** (운영/성능)
   - `JWT_SECRET` 최소 길이(32자) 부팅 검증 추가 — 약한 시크릿 차단
   - Oracle 접속 옵션을 공통 빌더로 통합(런타임·마이그레이션 CLI 일원화) — CLI가 SID를 service name처럼 취급하던 잠재 불일치 제거
