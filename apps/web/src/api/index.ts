@@ -1,5 +1,9 @@
 import axios from "axios";
-import { LOCALSTORAGE_REFRESH_TOKEN, LOCALSTORAGE_TOKEN } from "@/constants";
+import {
+  AUTH_FORCE_LOGOUT_EVENT,
+  LOCALSTORAGE_REFRESH_TOKEN,
+  LOCALSTORAGE_TOKEN,
+} from "@/constants";
 import { toast } from "sonner";
 import { type UserProfile } from "@/types";
 
@@ -59,16 +63,28 @@ async function refreshAccessToken(): Promise<string | null> {
   }
 }
 
-/** 세션 강제 종료 → 로그인 화면으로. */
+// 동일 401 폭주(여러 요청 동시 만료) 시 토스트/이벤트가 중복 발행되지 않도록.
+let forcingLogout = false;
+
+/**
+ * 세션 강제 종료 → 로그인 화면으로(soft redirect).
+ * 저수준 api 계층은 라우터 컨텍스트 밖이므로 직접 navigate 할 수 없다.
+ * 토큰만 제거하고 전역 이벤트를 발행해, 라우터 안의 워처가 스토어/쿼리 캐시
+ * 정리 + 라우팅을 담당한다(full reload 회피로 SPA 상태 보존).
+ */
 function forceLogout() {
   localStorage.removeItem(LOCALSTORAGE_TOKEN);
   localStorage.removeItem(LOCALSTORAGE_REFRESH_TOKEN);
-  toast.error("세션이 만료되었습니다. 다시 로그인해 주세요.", {
-    duration: 900,
-    onAutoClose: () => {
-      document.location.href = "/login";
-    },
-  });
+  if (forcingLogout) return;
+  forcingLogout = true;
+  toast.error("세션이 만료되었습니다. 다시 로그인해 주세요.", { duration: 2000 });
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent(AUTH_FORCE_LOGOUT_EVENT));
+  }
+  // 새 세션이 시작되면 다시 발행 가능하도록 리셋.
+  setTimeout(() => {
+    forcingLogout = false;
+  }, 2000);
 }
 
 // 공통 Response 및 Error 처리: 401 시 refresh 1회 시도 후 원요청 재시도.
