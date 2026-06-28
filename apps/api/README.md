@@ -131,6 +131,7 @@ pnpm --filter @hkrndmdm/api run start:dev
 pnpm --filter @hkrndmdm/api run build
 pnpm --filter @hkrndmdm/api run test       # unit (*.spec.ts)
 pnpm --filter @hkrndmdm/api run test:e2e   # e2e (test/*.e2e-spec.ts), DB-free
+pnpm --filter @hkrndmdm/api run test:db    # core-query tests on real Oracle (Docker required)
 ```
 
 ## Testing strategy
@@ -148,18 +149,22 @@ global guards/pipes:
   `PermissionsService`), DTO validation (400), and the `@Public` signin contract
   (`ok:false` instead of a global 401). Uses a real `JwtStrategy` with a test secret.
 
-**3. Core-query tests against a test DB — opt-in (planned).** Some queries can't be
-validated by mocks because they rely on **Oracle-only SQL** that no in-memory engine
-(sqlite/H2) supports — e.g. `KEEP (DENSE_RANK FIRST ORDER BY …)`, `REGEXP_LIKE`,
-EZConnect/`ROWNUM`. The highest-value targets:
-- `test-match` `ATTR_SQL` (mcode → tire attributes; LEFT JOINs + `KEEP DENSE_RANK` for
-  `SIZE_SMPL`) and the market-resolution path.
-- `template` filter/sort SQL and the upload diff `SELECT … FOR UPDATE` path.
+**3. Core-query tests against a real Oracle (`test/*.db-spec.ts`, `pnpm api:test:db`) —
+opt-in, requires Docker.** Some queries can't be validated by mocks because they rely on
+**Oracle-only SQL** that no in-memory engine (sqlite/H2) supports — e.g.
+`KEEP (DENSE_RANK FIRST ORDER BY …)`, `REGEXP_LIKE`, `INCH/100`, `substr` CASE.
+- `test-match.db-spec.ts` — spins up **`gvenzl/oracle-free:slim-faststart` via
+  Testcontainers**, creates fixture tables for `ATTR_SQL`'s source objects
+  (`V_MCODE_INFO_4_HINT`, `V_PIC_MATTR_MDPT_INFO_4_HINT`, `DRW_PARAM_INFO`,
+  `DW_SPEC_PLM_TIRE`), seeds a few mcodes, and asserts `resolveTire()` output: the
+  `KEEP DENSE_RANK` Release-preference for `SIZE_SMPL`, `REGEXP_LIKE` radial detection,
+  `INCH/100`, speed-symbol `substr` CASE, LEFT-JOIN-null (`grv_depth`), and
+  representative-market resolution (region + OEM→md-group).
 
-Approach when introduced: spin up **Oracle XE via Testcontainers (or a Docker Compose
-service)**, run the migrations, seed minimal fixtures, and gate these specs behind an env
-flag (e.g. `TEST_DB=1`) so the default `pnpm test` stays DB-free and fast. CI runs them in
-a dedicated job that provisions the container.
+This spec uses its own Jest config (`test/jest-db.json`, suffix `*.db-spec.ts`) so the
+default `pnpm test` / `pnpm api:test:e2e` stay **DB-free and fast** and never require
+Docker. First run pulls the Oracle image and boots the DB (~1 min). When CI gains a
+Docker-capable job, add `pnpm api:test:db` there; until then it is a local/manual gate.
 
 ## Runtime Endpoints
 
