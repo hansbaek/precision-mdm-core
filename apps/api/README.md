@@ -129,8 +129,37 @@ Direct workspace commands:
 pnpm --filter @hkrndmdm/api run start
 pnpm --filter @hkrndmdm/api run start:dev
 pnpm --filter @hkrndmdm/api run build
-pnpm --filter @hkrndmdm/api run test
+pnpm --filter @hkrndmdm/api run test       # unit (*.spec.ts)
+pnpm --filter @hkrndmdm/api run test:e2e   # e2e (test/*.e2e-spec.ts), DB-free
 ```
+
+## Testing strategy
+
+Hybrid: **mock-first, with an opt-in test DB for core Oracle queries.**
+
+**1. Unit (`*.spec.ts`, `pnpm api:test`)** — services with `DataSource`/repos mocked.
+Pure logic and SQL-string construction are covered here (no DB).
+
+**2. e2e (`test/*.e2e-spec.ts`, `pnpm api:test:e2e`) — DB-free by default.** Boot only
+the controllers/providers under test (not the full `AppModule`, which would require an
+Oracle connection) and mock the data layer. The HTTP glue is exercised with the **real**
+global guards/pipes:
+- `auth.e2e-spec.ts` — JWT auth gate (401), permission gate (403/allow via mocked
+  `PermissionsService`), DTO validation (400), and the `@Public` signin contract
+  (`ok:false` instead of a global 401). Uses a real `JwtStrategy` with a test secret.
+
+**3. Core-query tests against a test DB — opt-in (planned).** Some queries can't be
+validated by mocks because they rely on **Oracle-only SQL** that no in-memory engine
+(sqlite/H2) supports — e.g. `KEEP (DENSE_RANK FIRST ORDER BY …)`, `REGEXP_LIKE`,
+EZConnect/`ROWNUM`. The highest-value targets:
+- `test-match` `ATTR_SQL` (mcode → tire attributes; LEFT JOINs + `KEEP DENSE_RANK` for
+  `SIZE_SMPL`) and the market-resolution path.
+- `template` filter/sort SQL and the upload diff `SELECT … FOR UPDATE` path.
+
+Approach when introduced: spin up **Oracle XE via Testcontainers (or a Docker Compose
+service)**, run the migrations, seed minimal fixtures, and gate these specs behind an env
+flag (e.g. `TEST_DB=1`) so the default `pnpm test` stays DB-free and fast. CI runs them in
+a dedicated job that provisions the container.
 
 ## Runtime Endpoints
 

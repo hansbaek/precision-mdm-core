@@ -61,7 +61,7 @@ TypeScript를 기본으로 사용합니다. `apps/web`에서는 React 함수형 
 
 ## 테스트 가이드라인 (Testing Guidelines)
 
-API 워크스페이스에는 NestJS 기본 스캐폴딩으로 생성된 Jest가 포함되어 있습니다. API 테스트 시에는 `pnpm api:test`를 실행하십시오.
+API 워크스페이스에는 Jest가 포함되어 있습니다. 단위 테스트(`*.spec.ts`)는 `pnpm api:test`로, e2e 테스트(`test/*.e2e-spec.ts`)는 `pnpm --filter @hkrndmdm/api test:e2e`로 실행합니다. **기본 e2e 스위트는 DB-free(모킹) 원칙**입니다 — `AppModule` 전체를 import 하면 Oracle 연결이 필요하므로, 필요한 컨트롤러/서비스만 부팅하고 데이터 계층(서비스·`DataSource`)은 모킹합니다. 보안 글루(인증·권한 가드·검증)는 실제 전역 가드/파이프로 검증합니다(`auth.e2e-spec.ts` 참고). Oracle 전용 SQL을 쓰는 핵심 쿼리는 별도 opt-in 테스트 DB로 보강합니다 — [apps/api/README.md](apps/api/README.md)의 "Testing strategy" 절 참고.
 
 프론트엔드(`apps/web`)는 Vitest + Testing Library(jsdom)가 구성되어 있습니다. 웹 테스트는 `pnpm web:test`(또는 watch 모드 `pnpm --filter @hkrndmdm/web test:watch`)로 실행합니다. 테스트는 대상 파일 옆에 배치하는 코로케이션(Colocation) 패턴을 따르고 파일명을 `*.test.ts` 또는 `*.test.tsx`로 명명하십시오. 전역 setup은 `apps/web/src/test/setup.ts`(jest-dom 매처 등록)이며, Vitest 설정은 `vite.config.ts`의 `test` 블록에 있습니다.
 
