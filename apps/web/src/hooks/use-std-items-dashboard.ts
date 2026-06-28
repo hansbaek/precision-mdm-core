@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router';
 import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
 
@@ -41,7 +42,6 @@ export function useStdItemsDashboard(activeModule: string) {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(initialPrefs.pageSize);
 
-  const [viewingItem, setViewingItem] = useState<StdTestItem | null>(null);
   const [editingItem, setEditingItem] = useState<StdTestItem | null>(null);
   const [creatingItem, setCreatingItem] = useState(false);
   const [deletingItem, setDeletingItem] = useState<StdTestItem | null>(null);
@@ -55,6 +55,36 @@ export function useStdItemsDashboard(activeModule: string) {
     error,
     reload,
   } = useStdTestItems(activeModule, appliedFilters);
+
+  // ── 상세(읽기 전용) 모달은 URL(`?view=<id>`)을 단일 소스로 둔다 ──
+  // 딥링크·새로고침·뒤로가기를 지원하기 위해 보고 있는 항목을 URL에서 파생한다.
+  // (편집/생성/삭제 모달은 휘발성이라 URL 동기화 대상이 아니다.)
+  const [searchParams, setSearchParams] = useSearchParams();
+  const viewId = searchParams.get('view');
+  const viewingItem = useMemo(
+    () => (viewId ? items.find((it) => String(it.id) === viewId) ?? null : null),
+    [viewId, items],
+  );
+
+  // 상세 열기 — 커맨드 팔레트·테이블·토스트 액션이 항목 객체로 호출한다.
+  const openDetail = (item: StdTestItem) => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.set('view', String(item.id));
+      return next;
+    });
+  };
+  // 닫기는 replace 로 — 뒤로가기 시 모달이 되살아나지 않도록.
+  const closeDetail = () => {
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.delete('view');
+        return next;
+      },
+      { replace: true },
+    );
+  };
 
   const sortedItems = useMemo(() => {
     return [...items].sort((a, b) => {
@@ -79,7 +109,7 @@ export function useStdItemsDashboard(activeModule: string) {
     );
     setEditingItem(null);
     // 상세에서 진입했다면 갱신값이 보이도록 상세로 복귀.
-    if (editOrigin === 'detail') setViewingItem(updated);
+    if (editOrigin === 'detail') openDetail(updated);
     toast.success(`STD Item #${updated.id} 수정 완료`);
   };
 
@@ -96,7 +126,7 @@ export function useStdItemsDashboard(activeModule: string) {
     setSortOrder('desc');
     setCurrentPage(1);
     toast.success(`STD Item #${created.id} 생성 완료`, {
-      action: { label: '보기', onClick: () => setViewingItem(created) },
+      action: { label: '보기', onClick: () => openDetail(created) },
     });
   };
 
@@ -109,7 +139,7 @@ export function useStdItemsDashboard(activeModule: string) {
     setItems((prev) => prev.filter((it) => it.id !== id));
     setDeletingItem(null);
     // 삭제된 레코드를 보고 있었다면 상세도 닫는다.
-    setViewingItem((cur) => (cur && cur.id === id ? null : cur));
+    if (viewId && Number(viewId) === id) closeDetail();
     toast.success(`STD Item #${id} 삭제 완료`);
   };
 
@@ -126,7 +156,7 @@ export function useStdItemsDashboard(activeModule: string) {
 
   const handleEditCancel = () => {
     // 상세에서 진입했다면 상세로 복귀(취소이므로 값은 그대로).
-    if (editOrigin === 'detail' && editingItem) setViewingItem(editingItem);
+    if (editOrigin === 'detail' && editingItem) openDetail(editingItem);
     setEditingItem(null);
   };
 
@@ -147,7 +177,7 @@ export function useStdItemsDashboard(activeModule: string) {
     /** 정렬 적용 목록 — 대시보드 테이블 + 커맨드 팔레트 공유. */
     sortedItems,
     /** 상세 모달 열기 — 커맨드 팔레트도 사용. */
-    openDetail: setViewingItem,
+    openDetail,
 
     /** DashboardPage 가 받는 props(네비 prop 제외). */
     dashboardSectionProps: {
@@ -159,7 +189,7 @@ export function useStdItemsDashboard(activeModule: string) {
       loading,
       error,
       onRetry: reload,
-      onView: setViewingItem,
+      onView: openDetail,
       onEdit: handleEditFromTable,
       onDelete: setDeletingItem,
       onAdd: () => setCreatingItem(true),
@@ -177,9 +207,9 @@ export function useStdItemsDashboard(activeModule: string) {
     detailModalProps: {
       isOpen: viewingItem !== null,
       item: viewingItem,
-      onClose: () => setViewingItem(null),
+      onClose: closeDetail,
       onEdit: (item: StdTestItem) => {
-        setViewingItem(null);
+        closeDetail();
         setEditOrigin('detail');
         setEditingItem(item);
       },

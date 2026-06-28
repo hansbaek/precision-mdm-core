@@ -27,8 +27,10 @@ src/
 ├─ assets/                 # 정적 리소스 (이미지 등)
 ├─ components/             # 공통 재사용 컴포넌트 (Shadcn 등)
 │  ├─ ErrorBoundary.tsx    # 렌더 에러 격리(화이트스크린 방지)
-│  └─ dashboard/           # 대시보드 전용 컴포넌트 (모달 묶음 등)
+│  ├─ dashboard/           # 대시보드 전용 컴포넌트 (모달 묶음 등)
+│  └─ std-test-item-form/  # 시험항목 편집 모달 — 폼 훅 + 섹션 컴포넌트 (셸은 StdTestItemEditModal)
 ├─ hooks/                  # 커스텀 훅 (서버 데이터는 useQuery 래핑 훅으로 제공)
+│  └─ use-force-logout.ts  # 세션 강제 종료 → 스토어/캐시 정리 + 로그인 soft-redirect
 ├─ lib/                    # 기타 라이브러리 코드
 │  ├─ query-client.ts      # 전역 QueryClient (TanStack Query) 설정
 │  └─ nav-config.ts        # 모듈/탭 네비 구성 + 라우트 정규화(resolveActiveRoute)
@@ -138,6 +140,8 @@ pnpm preview
 - **셸**: [`App.tsx`](src/App.tsx)가 레이아웃 셸. `useLocation`으로 경로를 파싱하고, 사이드바/헤더/팔레트의 전환은 `useNavigate`로 URL을 바꾼다(상태 setter 아님).
 - **정규화**: [`resolveActiveRoute`](src/lib/nav-config.ts)가 URL의 (module, tab)을 권한·구성에 비춰 유효한 값으로 정규화하고, `App`의 effect가 실제 URL을 canonical 경로로 교정한다(미허용 모듈/탭, `/` 진입 등). 권한 게이팅은 `ProtectedRoute`(로그인+권한 적재)와 `resolveActiveRoute`(메뉴 view 권한)에서 이뤄진다.
 - **화면 레지스트리**: 어떤 (module/tab)에 어떤 화면을 렌더할지는 `App.tsx`의 `screens` 맵에 모여 있다. **화면 추가 = 맵 항목 + (탭이면) [`nav-config.ts`](src/lib/nav-config.ts)의 `MODULE_TABS` 항목 추가.**
+- **모달 딥링크(URL 상태)**: 시험항목 **상세(읽기 전용)** 모달은 `?view=<id>` 쿼리를 단일 소스로 둔다([`use-std-items-dashboard.ts`](src/hooks/use-std-items-dashboard.ts)). URL이 진실이므로 북마크·새로고침·뒤로가기가 동작하고, 닫기는 `replace`로 처리해 뒤로가기 시 모달이 되살아나지 않는다. 보고 있는 항목은 로드된 목록에서 id로 파생하며, 목록에 없으면 무시한다. (휘발성인 편집/생성/삭제 모달은 URL 동기화 대상이 아니다.) 경로 정규화(`App.tsx`)는 쿼리스트링을 보존한다.
+- **세션 강제 종료(soft-redirect)**: 토큰 만료(401·리프레시 실패) 시 저수준 `api/index.ts`가 전역 이벤트(`auth:force-logout`)를 발행하고, 라우터 안의 워처 [`use-force-logout.ts`](src/hooks/use-force-logout.ts)가 스토어·환경설정 초기화 + `queryClient.clear()` 후 `/login`으로 **SPA 전환**한다(전체 새로고침 없음 → 이전 사용자 데이터 잔존 방지).
 
 ---
 

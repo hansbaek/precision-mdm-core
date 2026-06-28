@@ -85,12 +85,13 @@ export default function App() {
   const goToTab = (tab: string) => navigate(pathOf('test-master', tab));
 
   // 실제 URL을 정규 경로로 교정(미허용 모듈/탭, 또는 "/" 진입 시).
+  // 쿼리스트링(`?view=` 등 모달 딥링크)은 보존한다.
   useEffect(() => {
     const target = pathOf(activeModule, activeTab);
     if (activeModule && location.pathname !== target) {
-      navigate(target, { replace: true });
+      navigate(`${target}${location.search}`, { replace: true });
     }
-  }, [activeModule, activeTab, location.pathname, navigate]);
+  }, [activeModule, activeTab, location.pathname, location.search, navigate]);
 
   // (모듈, 탭) → 화면 레지스트리. 화면 추가는 여기 항목 추가로 끝난다.
   // 일부 화면은 props가 달라 렌더 함수(클로저)로 둔다.
